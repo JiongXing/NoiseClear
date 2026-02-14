@@ -28,6 +28,21 @@ struct WaveformView: View {
     /// 如果为 nil，则使用自身数据的最大值进行归一化
     var referenceMaxAmplitude: Float? = nil
 
+    // MARK: - dB 对数刻度常量
+
+    /// dB 动态范围下限（低于此值视为静音）
+    private static let dbFloor: Float = -60.0
+
+    /// 将线性 RMS 值转换为 0~1 的 dB 归一化值
+    /// 使安静部分的差异在视觉上更加明显
+    private static func linearToDbNormalized(_ value: Float, reference: Float) -> CGFloat {
+        guard value > 0, reference > 0 else { return 0 }
+        let db = 20.0 * log10(value / reference)
+        // 将 dB 值映射到 0~1 范围 (dbFloor..0 → 0..1)
+        let normalized = (db - dbFloor) / (0 - dbFloor)
+        return CGFloat(max(0, min(1, normalized)))
+    }
+
     var body: some View {
         GeometryReader { geometry in
             let width = geometry.size.width
@@ -42,7 +57,7 @@ struct WaveformView: View {
                 }
                 .stroke(color.opacity(0.3), lineWidth: 0.5)
             } else {
-                // 绘制波形
+                // 绘制波形（使用 dB 对数刻度）
                 Canvas { context, size in
                     let barCount = samples.count
                     guard barCount > 0 else { return }
@@ -50,10 +65,10 @@ struct WaveformView: View {
                     let barWidth = max(1, size.width / CGFloat(barCount))
                     // 使用参考最大振幅（对比模式）或自身最大振幅（独立模式）
                     let maxAmplitude = referenceMaxAmplitude ?? (samples.max() ?? 1.0)
-                    let normalizer: Float = maxAmplitude > 0 ? maxAmplitude : 1.0
 
                     for i in 0..<barCount {
-                        let normalized = min(1.0, CGFloat(samples[i] / normalizer))
+                        // 使用 dB 对数刻度替代线性刻度，放大安静部分的视觉差异
+                        let normalized = Self.linearToDbNormalized(samples[i], reference: maxAmplitude)
                         let barHeight = max(1, normalized * (size.height / 2 - 2))
                         let x = CGFloat(i) * barWidth
 
