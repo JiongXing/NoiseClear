@@ -9,36 +9,38 @@ import SwiftUI
 
 // MARK: - 波形可视化视图
 
-/// 显示音频波形的视图，支持原始和处理后的波形对比
+/// 显示音频波形的视图，使用平滑折线包络 + 渐变填充
+/// 模仿 Logic Pro / Audacity 等专业音频软件的波形显示风格
 struct WaveformView: View {
 
-    /// 波形采样数据
+    /// 波形采样数据（RMS 值）
     let samples: [Float]
 
     /// 波形颜色
     var color: Color = .accentColor
 
-    /// 波形线条宽度
-    var lineWidth: CGFloat = 1.5
+    /// 包络线条宽度
+    var lineWidth: CGFloat = 1.2
 
-    /// 是否镜像显示（上下对称）
+    /// 是否镜像显示（上下对称包络）
     var mirrored: Bool = true
 
-    /// 参考最大振幅（用于对比模式下统一归一化基准）
-    /// 如果为 nil，则使用自身数据的最大值进行归一化
+    /// 参考最大振幅（对比模式下统一归一化基准）
+    /// 为 nil 时使用自身最大值
     var referenceMaxAmplitude: Float? = nil
 
-    // MARK: - dB 对数刻度常量
+    /// 是否绘制中心参考线
+    var showCenterLine: Bool = true
+
+    // MARK: - dB 对数刻度
 
     /// dB 动态范围下限（低于此值视为静音）
     private static let dbFloor: Float = -60.0
 
     /// 将线性 RMS 值转换为 0~1 的 dB 归一化值
-    /// 使安静部分的差异在视觉上更加明显
     private static func linearToDbNormalized(_ value: Float, reference: Float) -> CGFloat {
         guard value > 0, reference > 0 else { return 0 }
         let db = 20.0 * log10(value / reference)
-        // 将 dB 值映射到 0~1 范围 (dbFloor..0 → 0..1)
         let normalized = (db - dbFloor) / (0 - dbFloor)
         return CGFloat(max(0, min(1, normalized)))
     }
@@ -50,67 +52,168 @@ struct WaveformView: View {
             let midY = height / 2
 
             if samples.isEmpty {
-                // 空状态：显示一条中间线
+                // 空状态：一条中间参考线
                 Path { path in
                     path.move(to: CGPoint(x: 0, y: midY))
                     path.addLine(to: CGPoint(x: width, y: midY))
                 }
                 .stroke(color.opacity(0.3), lineWidth: 0.5)
             } else {
-                // 绘制波形（使用 dB 对数刻度）
                 Canvas { context, size in
-                    let barCount = samples.count
-                    guard barCount > 0 else { return }
+                    let count = samples.count
+                    guard count > 1 else { return }
 
-                    let barWidth = max(1, size.width / CGFloat(barCount))
-                    // 使用参考最大振幅（对比模式）或自身最大振幅（独立模式）
                     let maxAmplitude = referenceMaxAmplitude ?? (samples.max() ?? 1.0)
+                    let stepX = size.width / CGFloat(count - 1)
+                    let halfH = size.height / 2 - 1
 
-                    for i in 0..<barCount {
-                        // 使用 dB 对数刻度替代线性刻度，放大安静部分的视觉差异
-                        let normalized = Self.linearToDbNormalized(samples[i], reference: maxAmplitude)
-                        let barHeight = max(1, normalized * (size.height / 2 - 2))
-                        let x = CGFloat(i) * barWidth
+                    // 1. 计算上下包络点
+                    var upperPoints = [CGPoint]()
+                    var lowerPoints = [CGPoint]()
+                    upperPoints.reserveCapacity(count)
+                    lowerPoints.reserveCapacity(count)
 
-                        let rect: CGRect
-                        if mirrored {
-                            rect = CGRect(
-                                x: x,
-                                y: midY - barHeight,
-                                width: max(1, barWidth - 0.5),
-                                height: barHeight * 2
-                            )
-                        } else {
-                            rect = CGRect(
-                                x: x,
-                                y: size.height - barHeight,
-                                width: max(1, barWidth - 0.5),
-                                height: barHeight
-                            )
-                        }
+                    for i in 0..<count {
+                        let x = CGFloat(i) * stepX
+                        let n = Self.linearToDbNormalized(samples[i], reference: maxAmplitude)
+                        let offset = n * halfH
+                        upperPoints.append(CGPoint(x: x, y: midY - offset))
+                        lowerPoints.append(CGPoint(x: x, y: midY + offset))
+                    }
 
-                        let roundedRect = RoundedRectangle(cornerRadius: barWidth / 3)
-                            .path(in: rect)
+                    // 2. 构建填充区域（上包络 → 下包络 → 闭合）
+                    var fillPath = Path()
+                    Self.addSmoothCurve(to: &fillPath, through: upperPoints)
+                    if mirrored {
+                        Self.appendSmoothCurve(to: &fillPath, through: lowerPoints.reversed())
+                    } else {
+                        // 非镜像模式：填充到底部
+                        fillPath.addLine(to: CGPoint(x: upperPoints.last!.x, y: size.height))
+                        fillPath.addLine(to: CGPoint(x: 0, y: size.height))
+                    }
+                    fillPath.closeSubpath()
 
-                        // 渐变透明度：中间高、两端低
-                        let opacity = 0.4 + 0.6 * Double(normalized)
-                        context.fill(roundedRect, with: .color(color.opacity(opacity)))
+                    // 3. 渐变填充
+                    let gradient = Gradient(colors: [
+                        color.opacity(0.30),
+                        color.opacity(0.08),
+                    ])
+                    if mirrored {
+                        // 从上下边缘向中心线渐变（对称）
+                        context.fill(fillPath, with: .linearGradient(
+                            gradient,
+                            startPoint: CGPoint(x: 0, y: midY - halfH),
+                            endPoint: CGPoint(x: 0, y: midY)
+                        ))
+                        // 下半部分镜像渐变
+                        context.fill(fillPath, with: .linearGradient(
+                            gradient,
+                            startPoint: CGPoint(x: 0, y: midY + halfH),
+                            endPoint: CGPoint(x: 0, y: midY)
+                        ))
+                    } else {
+                        context.fill(fillPath, with: .linearGradient(
+                            gradient,
+                            startPoint: CGPoint(x: 0, y: 0),
+                            endPoint: CGPoint(x: 0, y: size.height)
+                        ))
+                    }
+
+                    // 4. 描边上包络线
+                    var upperStroke = Path()
+                    Self.addSmoothCurve(to: &upperStroke, through: upperPoints)
+                    context.stroke(
+                        upperStroke,
+                        with: .color(color.opacity(0.85)),
+                        lineWidth: lineWidth
+                    )
+
+                    // 5. 描边下包络线（镜像模式）
+                    if mirrored {
+                        var lowerStroke = Path()
+                        Self.addSmoothCurve(to: &lowerStroke, through: lowerPoints)
+                        context.stroke(
+                            lowerStroke,
+                            with: .color(color.opacity(0.85)),
+                            lineWidth: lineWidth
+                        )
+                    }
+
+                    // 6. 中心参考线
+                    if showCenterLine {
+                        var center = Path()
+                        center.move(to: CGPoint(x: 0, y: midY))
+                        center.addLine(to: CGPoint(x: size.width, y: midY))
+                        context.stroke(
+                            center,
+                            with: .color(color.opacity(0.12)),
+                            lineWidth: 0.5
+                        )
                     }
                 }
             }
         }
     }
+
+    // MARK: - 平滑曲线构建
+
+    /// 通过给定点集创建平滑二次贝塞尔曲线路径（新建子路径）
+    private static func addSmoothCurve(to path: inout Path, through points: [CGPoint]) {
+        guard let first = points.first else { return }
+        path.move(to: first)
+        guard points.count > 1 else { return }
+        appendCurveSegments(to: &path, through: points)
+    }
+
+    /// 在已有路径上续接平滑曲线（不 move，直接续线）
+    private static func appendSmoothCurve(to path: inout Path, through points: [CGPoint]) {
+        guard let first = points.first else { return }
+        path.addLine(to: first)
+        guard points.count > 1 else { return }
+        appendCurveSegments(to: &path, through: points)
+    }
+
+    /// 共享实现：用二次贝塞尔曲线平滑连接各点
+    /// 使用"中点平滑"算法 — 以相邻点的中点为曲线端点，以数据点为控制点
+    private static func appendCurveSegments(to path: inout Path, through points: [CGPoint]) {
+        guard points.count > 2 else {
+            if points.count == 2 {
+                path.addLine(to: points[1])
+            }
+            return
+        }
+
+        // 首段：直线到第一个中点
+        path.addLine(to: mid(points[0], points[1]))
+
+        // 中间段：二次贝塞尔曲线，数据点为控制点，中点为端点
+        for i in 1..<points.count - 1 {
+            path.addQuadCurve(
+                to: mid(points[i], points[i + 1]),
+                control: points[i]
+            )
+        }
+
+        // 尾段：直线到最后一个点
+        path.addLine(to: points[points.count - 1])
+    }
+
+    /// 两点的中点
+    private static func mid(_ a: CGPoint, _ b: CGPoint) -> CGPoint {
+        CGPoint(x: (a.x + b.x) * 0.5, y: (a.y + b.y) * 0.5)
+    }
 }
 
 // MARK: - 波形对比视图
 
-/// 并排显示原始和处理后的波形
+/// 将原始和降噪后的波形叠加显示在同一坐标系中
+/// 原始波形为灰色区域，降噪后波形为强调色叠加，差异一目了然
 struct WaveformComparisonView: View {
 
     let originalSamples: [Float]
     let processedSamples: [Float]
 
-    /// 使用原始波形的最大振幅作为统一基准，确保对比时比例一致
+    /// 统一归一化基准：以原始波形的最大振幅为参考
     private var referenceMax: Float {
         originalSamples.max() ?? 1.0
     }
@@ -121,50 +224,80 @@ struct WaveformComparisonView: View {
     }
 
     var body: some View {
-        VStack(spacing: 8) {
-            // 原始波形
-            VStack(alignment: .leading, spacing: 4) {
-                Label("原始音频", systemImage: "waveform")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        VStack(spacing: 6) {
+            // 图例
+            HStack(spacing: 16) {
+                legendItem(
+                    color: .secondary,
+                    text: "原始音频",
+                    icon: "waveform"
+                )
 
+                legendItem(
+                    color: hasProcessedData ? .accentColor : .secondary.opacity(0.4),
+                    text: hasProcessedData ? "降噪后" : "降噪后（待处理）",
+                    icon: "waveform.path.ecg"
+                )
+
+                Spacer()
+            }
+
+            // 叠加波形（单根折线 — RMS 能量包络模式）
+            ZStack {
+                // 底层：原始波形（灰色）
                 WaveformView(
                     samples: originalSamples,
                     color: .secondary,
-                    referenceMaxAmplitude: referenceMax
+                    lineWidth: 1.0,
+                    mirrored: false,
+                    referenceMaxAmplitude: referenceMax,
+                    showCenterLine: false
                 )
-                .frame(height: 50)
-            }
 
-            // 处理后波形
-            VStack(alignment: .leading, spacing: 4) {
-                Label(
-                    hasProcessedData ? "降噪后" : "降噪后（待处理）",
-                    systemImage: "waveform.path.ecg"
-                )
+                // 顶层：降噪后波形（强调色）
+                if hasProcessedData {
+                    WaveformView(
+                        samples: processedSamples,
+                        color: .accentColor,
+                        lineWidth: 1.2,
+                        mirrored: false,
+                        referenceMaxAmplitude: referenceMax,
+                        showCenterLine: false
+                    )
+                }
+            }
+            .frame(height: 60)
+        }
+    }
+
+    /// 图例项
+    private func legendItem(color: Color, text: String, icon: String) -> some View {
+        HStack(spacing: 4) {
+            RoundedRectangle(cornerRadius: 2)
+                .fill(color.opacity(0.6))
+                .frame(width: 12, height: 4)
+
+            Label(text, systemImage: icon)
                 .font(.caption)
-                .foregroundStyle(hasProcessedData ? Color.accentColor : .secondary)
-
-                // 降噪前显示空状态（水平线），降噪后显示实际波形并使用统一基准
-                WaveformView(
-                    samples: processedSamples,
-                    color: .accentColor,
-                    referenceMaxAmplitude: referenceMax
-                )
-                .frame(height: 50)
-            }
+                .foregroundStyle(color)
         }
     }
 }
+
+// MARK: - 预览
 
 #Preview {
     let sampleData: [Float] = (0..<200).map { _ in Float.random(in: 0.05...1.0) }
     let processedData: [Float] = sampleData.map { max(0.02, $0 * 0.4) }
 
-    return VStack(spacing: 20) {
+    return VStack(spacing: 24) {
+        // 单独波形
         WaveformView(samples: sampleData, color: .blue)
             .frame(height: 80)
 
+        Divider()
+
+        // 对比视图
         WaveformComparisonView(
             originalSamples: sampleData,
             processedSamples: processedData
