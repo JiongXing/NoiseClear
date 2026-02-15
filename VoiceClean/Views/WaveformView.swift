@@ -93,10 +93,10 @@ struct WaveformView: View {
                     }
                     fillPath.closeSubpath()
 
-                    // 3. 渐变填充
+                    // 3. 渐变填充（较高不透明度，增强视觉效果）
                     let gradient = Gradient(colors: [
-                        color.opacity(0.30),
-                        color.opacity(0.08),
+                        color.opacity(0.45),
+                        color.opacity(0.12),
                     ])
                     if mirrored {
                         // 从上下边缘向中心线渐变（对称）
@@ -119,12 +119,12 @@ struct WaveformView: View {
                         ))
                     }
 
-                    // 4. 描边上包络线
+                    // 4. 描边上包络线（高不透明度，清晰边缘）
                     var upperStroke = Path()
                     Self.addSmoothCurve(to: &upperStroke, through: upperPoints)
                     context.stroke(
                         upperStroke,
-                        with: .color(color.opacity(0.85)),
+                        with: .color(color.opacity(0.95)),
                         lineWidth: lineWidth
                     )
 
@@ -134,7 +134,7 @@ struct WaveformView: View {
                         Self.addSmoothCurve(to: &lowerStroke, through: lowerPoints)
                         context.stroke(
                             lowerStroke,
-                            with: .color(color.opacity(0.85)),
+                            with: .color(color.opacity(0.95)),
                             lineWidth: lineWidth
                         )
                     }
@@ -206,12 +206,23 @@ struct WaveformView: View {
 
 // MARK: - 波形对比视图
 
-/// 将原始和降噪后的波形叠加显示在同一坐标系中
-/// 原始波形为灰色区域，降噪后波形为强调色叠加，差异一目了然
+/// 将原始和降噪后的波形上下分离显示，强化视觉对比
+///
+/// 设计原则：
+/// - 上下分离布局（非叠加），让振幅差异一目了然
+/// - 统一归一化基准，确保两行在同一刻度下可比
+/// - 使用对比色（橙色 vs 绿色）区分原始与降噪后
+/// - 镜像包络模式增大可视面积
+/// - 右侧显示降噪率数值指标
 struct WaveformComparisonView: View {
 
     let originalSamples: [Float]
     let processedSamples: [Float]
+
+    /// 原始波形颜色（暖色调，代表"未处理"）
+    private let originalColor = Color.orange
+    /// 降噪波形颜色（冷色调/绿色，代表"已清理"）
+    private let processedColor = Color.green
 
     /// 统一归一化基准：以原始波形的最大振幅为参考
     private var referenceMax: Float {
@@ -223,63 +234,115 @@ struct WaveformComparisonView: View {
         !processedSamples.isEmpty
     }
 
+    /// 降噪率（RMS 能量缩减百分比）
+    private var reductionPercent: Int {
+        guard hasProcessedData,
+              !originalSamples.isEmpty,
+              !processedSamples.isEmpty
+        else { return 0 }
+
+        let originalRMS = sqrt(originalSamples.reduce(0) { $0 + $1 * $1 } / Float(originalSamples.count))
+        let processedRMS = sqrt(processedSamples.reduce(0) { $0 + $1 * $1 } / Float(processedSamples.count))
+        guard originalRMS > 0 else { return 0 }
+
+        let ratio = 1.0 - processedRMS / originalRMS
+        return max(0, min(100, Int(ratio * 100)))
+    }
+
     var body: some View {
-        VStack(spacing: 6) {
-            // 图例
-            HStack(spacing: 16) {
-                legendItem(
-                    color: .secondary,
-                    text: "原始音频",
-                    icon: "waveform"
-                )
+        VStack(spacing: 0) {
+            // ── 上方：原始波形 ──
+            waveformRow(
+                label: "原始音频",
+                icon: "waveform",
+                samples: originalSamples,
+                color: originalColor,
+                trailingContent: { EmptyView() }
+            )
 
-                legendItem(
-                    color: hasProcessedData ? .accentColor : .secondary.opacity(0.4),
-                    text: hasProcessedData ? "降噪后" : "降噪后（待处理）",
-                    icon: "waveform.path.ecg"
-                )
+            // 分隔线
+            Rectangle()
+                .fill(Color.primary.opacity(0.06))
+                .frame(height: 1)
+                .padding(.horizontal, 4)
 
-                Spacer()
-            }
-
-            // 叠加波形（单根折线 — RMS 能量包络模式）
-            ZStack {
-                // 底层：原始波形（灰色）
-                WaveformView(
-                    samples: originalSamples,
-                    color: .secondary,
-                    lineWidth: 1.0,
-                    mirrored: false,
-                    referenceMaxAmplitude: referenceMax,
-                    showCenterLine: false
-                )
-
-                // 顶层：降噪后波形（强调色）
-                if hasProcessedData {
-                    WaveformView(
-                        samples: processedSamples,
-                        color: .accentColor,
-                        lineWidth: 1.2,
-                        mirrored: false,
-                        referenceMaxAmplitude: referenceMax,
-                        showCenterLine: false
-                    )
+            // ── 下方：降噪后波形 ──
+            waveformRow(
+                label: hasProcessedData ? "降噪后" : "降噪后（待处理）",
+                icon: "waveform.path.ecg",
+                samples: hasProcessedData ? processedSamples : [],
+                color: hasProcessedData ? processedColor : .secondary.opacity(0.3),
+                trailingContent: {
+                    // 降噪率指标
+                    if hasProcessedData {
+                        reductionBadge
+                    }
                 }
-            }
-            .frame(height: 60)
+            )
         }
     }
 
-    /// 图例项
-    private func legendItem(color: Color, text: String, icon: String) -> some View {
-        HStack(spacing: 4) {
-            RoundedRectangle(cornerRadius: 2)
-                .fill(color.opacity(0.6))
-                .frame(width: 12, height: 4)
+    // MARK: - 单行波形
 
-            Label(text, systemImage: icon)
-                .font(.caption)
-                .foregroundStyle(color)
+    /// 一行波形：标签 + 波形 + 可选右侧内容
+    @ViewBuilder
+    private func waveformRow<Trailing: View>(
+        label: String,
+        icon: String,
+        samples: [Float],
+        color: Color,
+        @ViewBuilder trailingContent: () -> Trailing
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 4) {
+                // 左侧标签
+                HStack(spacing: 3) {
+                    Circle()
+                        .fill(color.opacity(0.8))
+                        .frame(width: 6, height: 6)
+
+                    Text(label)
+                        .font(.caption2)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                trailingContent()
+            }
+            .padding(.horizontal, 4)
+
+            // 波形
+            WaveformView(
+                samples: samples,
+                color: color,
+                lineWidth: 1.4,
+                mirrored: true,
+                referenceMaxAmplitude: referenceMax,
+                showCenterLine: true
+            )
+            .frame(height: 52)
+        }
+        .padding(.vertical, 6)
+    }
+
+    // MARK: - 降噪率徽章
+
+    private var reductionBadge: some View {
+        HStack(spacing: 3) {
+            Image(systemName: "arrow.down.right")
+                .font(.system(size: 8, weight: .bold))
+            Text("\(reductionPercent)%")
+                .font(.caption2.monospacedDigit())
+                .fontWeight(.semibold)
+        }
+        .foregroundStyle(processedColor)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background {
+            Capsule()
+                .fill(processedColor.opacity(0.12))
         }
     }
 }
