@@ -57,7 +57,7 @@ struct DropZoneView: View {
                     .animation(.spring(response: 0.3), value: isTargeted)
 
                 VStack(spacing: 4) {
-                    Text("拖拽音频文件到此处")
+                    Text("拖拽音频/视频文件到此处")
                         .font(.headline)
                         .foregroundStyle(.primary)
 
@@ -65,7 +65,7 @@ struct DropZoneView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
 
-                    Text("支持 MP3、M4A、WAV、AAC、FLAC 格式")
+                    Text("支持 MP3、M4A、WAV、AAC、FLAC、MP4、MOV 格式")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                         .padding(.top, 2)
@@ -97,7 +97,7 @@ struct DropZoneView: View {
             _ = provider.loadObject(ofClass: URL.self) { url, _ in
                 if let url {
                     let ext = url.pathExtension.lowercased()
-                    if ["mp3", "m4a", "wav", "aac", "aiff", "flac"].contains(ext) {
+                    if kAllSupportedExtensions.contains(ext) {
                         urls.append(url)
                     }
                 }

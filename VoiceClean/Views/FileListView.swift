@@ -47,7 +47,7 @@ struct FileListView: View {
             Image(systemName: "music.note.list")
                 .font(.title2)
                 .foregroundStyle(.tertiary)
-            Text("暂无音频文件")
+            Text("暂无媒体文件")
                 .font(.subheadline)
                 .foregroundStyle(.tertiary)
         }
@@ -149,7 +149,7 @@ struct AudioFileRow: View {
     private var statusIcon: some View {
         switch file.status {
         case .idle:
-            Image(systemName: "music.note")
+            Image(systemName: file.isVideo ? "film" : "music.note")
                 .foregroundStyle(.secondary)
                 .font(.system(size: 14))
 

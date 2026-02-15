@@ -74,9 +74,20 @@ enum ProcessingStatus: Equatable {
     }
 }
 
-// MARK: - 音频文件数据模型
+// MARK: - 支持的文件类型
 
-/// 表示一个待处理的音频文件
+/// 支持的音频文件扩展名
+let kAudioExtensions = ["mp3", "m4a", "wav", "aac", "aiff", "flac"]
+
+/// 支持的视频文件扩展名
+let kVideoExtensions = ["mp4", "mov"]
+
+/// 所有支持的文件扩展名
+let kAllSupportedExtensions = kAudioExtensions + kVideoExtensions
+
+// MARK: - 音频/视频文件数据模型
+
+/// 表示一个待处理的媒体文件（音频或视频）
 struct AudioFileItem: Identifiable {
     let id: UUID
     let url: URL
@@ -97,6 +108,16 @@ struct AudioFileItem: Identifiable {
         self.waveformSamples = waveformSamples
         self.processedWaveformSamples = []
         self.status = .idle
+    }
+
+    /// 文件扩展名（小写）
+    var fileExtension: String {
+        url.pathExtension.lowercased()
+    }
+
+    /// 是否为视频文件
+    var isVideo: Bool {
+        kVideoExtensions.contains(fileExtension)
     }
 
     /// 格式化时长显示（HH:MM:SS）

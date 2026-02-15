@@ -101,7 +101,7 @@ struct ContentView: View {
                         .fontWeight(.semibold)
                 }
 
-                Text("音频降噪 · 突出人声")
+                Text("音视频降噪 · 突出人声")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

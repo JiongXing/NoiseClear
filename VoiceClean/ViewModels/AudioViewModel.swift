@@ -7,6 +7,7 @@
 
 import Foundation
 import Observation
+import UniformTypeIdentifiers
 
 // MARK: - 主 ViewModel
 
@@ -72,12 +73,12 @@ final class AudioViewModel {
             // 避免重复添加
             guard !audioFiles.contains(where: { $0.url == url }) else { continue }
 
-            // 检查文件扩展名
+            // 检查文件扩展名（支持音频和视频）
             let ext = url.pathExtension.lowercased()
-            guard ["mp3", "m4a", "wav", "aac", "aiff", "flac"].contains(ext) else { continue }
+            guard kAllSupportedExtensions.contains(ext) else { continue }
 
             do {
-                let duration = try AudioFileService.getAudioDuration(url: url)
+                let duration = try AudioFileService.getMediaDuration(url: url)
 
                 // 预加载波形数据
                 let audioData = try AudioFileService.loadAndResample(url: url)
@@ -141,8 +142,25 @@ final class AudioViewModel {
     func exportFile(_ item: AudioFileItem) async {
         guard case .completed(let tempURL) = item.status else { return }
 
-        let suggestedName = (item.fileName as NSString).deletingPathExtension + "_denoised.wav"
-        guard let saveURL = await AudioFileService.openSavePanel(suggestedName: suggestedName) else { return }
+        let baseName = (item.fileName as NSString).deletingPathExtension
+
+        // 视频文件保留原格式，音频文件输出 WAV
+        let suggestedName: String
+        let allowedContentTypes: [UTType]
+
+        if item.isVideo {
+            let ext = item.fileExtension
+            suggestedName = "\(baseName)_denoised.\(ext)"
+            allowedContentTypes = ext == "mov" ? [.quickTimeMovie] : [.mpeg4Movie]
+        } else {
+            suggestedName = "\(baseName)_denoised.wav"
+            allowedContentTypes = [.wav]
+        }
+
+        guard let saveURL = await AudioFileService.openSavePanel(
+            suggestedName: suggestedName,
+            allowedContentTypes: allowedContentTypes
+        ) else { return }
 
         do {
             try AudioFileService.exportFile(from: tempURL, to: saveURL)
@@ -161,6 +179,9 @@ final class AudioViewModel {
     // MARK: - 私有方法
 
     /// 处理指定索引的文件（使用 FFmpeg arnndn 降噪）
+    ///
+    /// 音频文件：直接降噪输出 WAV
+    /// 视频文件：复制视频流 + 降噪音频轨道，输出原格式（MP4/MOV）
     private func processFile(at index: Int) async {
         guard index < audioFiles.count else { return }
 
@@ -169,12 +190,16 @@ final class AudioViewModel {
         let inputURL = audioFiles[index].url
         let fileName = audioFiles[index].fileName
         let duration = audioFiles[index].duration
+        let isVideo = audioFiles[index].isVideo
         let strength = Float(denoiseStrength)
         let fileIndex = index
 
         do {
-            // 生成输出临时文件 URL
-            let outputURL = AudioFileService.generateTempOutputURL(originalFileName: fileName)
+            // 生成输出临时文件 URL（视频保留原格式，音频输出 WAV）
+            let outputURL = AudioFileService.generateTempOutputURL(
+                originalFileName: fileName,
+                isVideo: isVideo
+            )
 
             // 所有重操作通过 GCD 在全局队列执行，确保不在主线程
             let result: (waveform: [Float], tempURL: URL) = try await withCheckedThrowingContinuation { continuation in
@@ -183,18 +208,19 @@ final class AudioViewModel {
                         // 初始化 FFmpeg 降噪引擎
                         let denoiser = try FFmpegDenoiser(strength: strength)
 
-                        // 执行 FFmpeg 降噪（文件到文件）
+                        // 执行 FFmpeg 降噪（根据文件类型选择不同处理策略）
                         try denoiser.process(
                             inputURL: inputURL,
                             outputURL: outputURL,
-                            duration: duration
+                            duration: duration,
+                            isVideo: isVideo
                         ) { progress in
                             DispatchQueue.main.async {
                                 self.audioFiles[fileIndex].status = .processing(progress)
                             }
                         }
 
-                        // 从降噪后的 WAV 文件提取波形数据
+                        // 从降噪后的文件提取波形数据（视频文件会自动提取音频轨道）
                         let waveform = try AudioFileService.loadWaveformFromFile(url: outputURL)
 
                         continuation.resume(returning: (waveform, outputURL))

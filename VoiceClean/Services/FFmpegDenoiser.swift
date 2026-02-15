@@ -64,23 +64,33 @@ final class FFmpegDenoiser: Sendable {
 
     // MARK: - 主处理方法
 
-    /// 对音频文件执行降噪处理
+    /// 对音频或视频文件执行降噪处理
     /// - Parameters:
-    ///   - inputURL: 输入音频文件 URL
-    ///   - outputURL: 输出 WAV 文件 URL
-    ///   - duration: 音频总时长（秒），用于计算进度
+    ///   - inputURL: 输入文件 URL（音频或视频）
+    ///   - outputURL: 输出文件 URL（音频→WAV，视频→原格式）
+    ///   - duration: 媒体总时长（秒），用于计算进度
+    ///   - isVideo: 是否为视频文件（视频模式下保留视频流，仅降噪音频轨道）
     ///   - onProgress: 进度回调 (0.0 ~ 1.0)
     func process(
         inputURL: URL,
         outputURL: URL,
         duration: TimeInterval,
+        isVideo: Bool = false,
         onProgress: @escaping @Sendable (Double) -> Void
     ) throws {
-        // 构建 FFmpeg 参数
-        let arguments = buildArguments(
-            inputPath: inputURL.path,
-            outputPath: outputURL.path
-        )
+        // 根据文件类型构建不同的 FFmpeg 参数
+        let arguments: [String]
+        if isVideo {
+            arguments = buildVideoArguments(
+                inputPath: inputURL.path,
+                outputPath: outputURL.path
+            )
+        } else {
+            arguments = buildArguments(
+                inputPath: inputURL.path,
+                outputPath: outputURL.path
+            )
+        }
 
         // 创建 Process
         let process = Process()
@@ -166,7 +176,7 @@ final class FFmpegDenoiser: Sendable {
 
     // MARK: - 私有方法
 
-    /// 构建 FFmpeg 命令行参数
+    /// 构建纯音频降噪的 FFmpeg 命令行参数
     private func buildArguments(inputPath: String, outputPath: String) -> [String] {
         // 构建 arnndn 滤镜字符串
         // mix 参数: 1.0 = 完全降噪, 0.0 = 原始信号
@@ -181,6 +191,28 @@ final class FFmpegDenoiser: Sendable {
             "-ac", "1",                 // 单声道
             "-c:a", "pcm_f32le",        // Float32 PCM 编码器（WAV 格式）
             "-f", "wav",                // 输出格式 WAV
+            "-progress", "pipe:1",      // 进度输出到 stdout
+            "-loglevel", "error",       // 只输出错误日志到 stderr
+            outputPath                  // 输出文件路径
+        ]
+    }
+
+    /// 构建视频文件降噪的 FFmpeg 命令行参数
+    ///
+    /// 视频流直接复制（不重新编码），仅对音频轨道应用 arnndn 降噪，
+    /// 音频使用 AAC 192kbps 重新编码以保持与 MP4/MOV 容器的兼容性。
+    private func buildVideoArguments(inputPath: String, outputPath: String) -> [String] {
+        let mixValue = String(format: "%.2f", denoiseStrength)
+        let filterChain = "arnndn=m=\(modelURL.path):mix=\(mixValue)"
+
+        return [
+            "-y",                       // 覆盖输出文件
+            "-i", inputPath,            // 输入视频
+            "-af", filterChain,         // 音频降噪滤镜
+            "-c:v", "copy",             // 视频流直接复制，不重新编码（速度极快）
+            "-c:a", "aac",              // 音频使用 AAC 编码
+            "-b:a", "192k",             // 音频比特率 192kbps（高质量）
+            "-movflags", "+faststart",  // MP4 快速启动（元数据前置）
             "-progress", "pipe:1",      // 进度输出到 stdout
             "-loglevel", "error",       // 只输出错误日志到 stderr
             outputPath                  // 输出文件路径

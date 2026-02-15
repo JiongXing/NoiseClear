@@ -7,10 +7,11 @@
 
 import AVFoundation
 import AppKit
+import UniformTypeIdentifiers
 
 // MARK: - 音频文件服务
 
-/// 负责文件选择、音频读取/写入、格式转换
+/// 负责文件选择、音频/视频读取/写入、格式转换
 enum AudioFileService {
 
     // MARK: - 常量
@@ -23,16 +24,16 @@ enum AudioFileService {
 
     // MARK: - 文件选择
 
-    /// 打开文件选择面板，让用户选择 MP3/音频文件
+    /// 打开文件选择面板，让用户选择音频或视频文件
     @MainActor
     static func openFilePicker() async -> [URL] {
         let panel = NSOpenPanel()
-        panel.title = "选择音频文件"
-        panel.message = "选择一个或多个 MP3 音频文件"
+        panel.title = "选择音频或视频文件"
+        panel.message = "选择一个或多个音频/视频文件进行降噪"
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
         panel.canChooseFiles = true
-        panel.allowedContentTypes = [.mp3, .audio]
+        panel.allowedContentTypes = [.audio, .mpeg4Movie, .quickTimeMovie]
 
         let response = panel.runModal()
         guard response == .OK else { return [] }
@@ -40,12 +41,18 @@ enum AudioFileService {
     }
 
     /// 打开保存面板，让用户选择导出位置
+    /// - Parameters:
+    ///   - suggestedName: 建议的文件名
+    ///   - allowedContentTypes: 允许的文件类型（默认 WAV）
     @MainActor
-    static func openSavePanel(suggestedName: String) async -> URL? {
+    static func openSavePanel(
+        suggestedName: String,
+        allowedContentTypes: [UTType] = [.wav]
+    ) async -> URL? {
         let panel = NSSavePanel()
-        panel.title = "导出降噪后的音频"
+        panel.title = "导出降噪后的文件"
         panel.nameFieldStringValue = suggestedName
-        panel.allowedContentTypes = [.wav]
+        panel.allowedContentTypes = allowedContentTypes
         panel.canCreateDirectories = true
 
         let response = panel.runModal()
@@ -53,18 +60,52 @@ enum AudioFileService {
         return panel.url
     }
 
-    // MARK: - 音频读取
+    // MARK: - 媒体信息读取
 
-    /// 读取音频文件信息（时长），不加载完整数据
-    static func getAudioDuration(url: URL) throws -> TimeInterval {
-        let audioFile = try AVAudioFile(forReading: url)
-        let sampleRate = audioFile.processingFormat.sampleRate
-        let frameCount = Double(audioFile.length)
-        return frameCount / sampleRate
+    /// 读取媒体文件时长（支持音频和视频）
+    static func getMediaDuration(url: URL) throws -> TimeInterval {
+        let ext = url.pathExtension.lowercased()
+
+        if kVideoExtensions.contains(ext) {
+            // 视频文件使用 AVURLAsset 获取时长
+            let asset = AVURLAsset(url: url)
+            let duration = CMTimeGetSeconds(asset.duration)
+            guard duration.isFinite && duration > 0 else {
+                throw AudioFileServiceError.invalidDuration
+            }
+            return duration
+        } else {
+            // 音频文件使用 AVAudioFile 获取时长
+            let audioFile = try AVAudioFile(forReading: url)
+            let sampleRate = audioFile.processingFormat.sampleRate
+            let frameCount = Double(audioFile.length)
+            return frameCount / sampleRate
+        }
     }
 
-    /// 读取音频文件并转换为 16kHz 单声道 Float32 PCM 数据
+    // MARK: - 音频读取
+
+    /// 读取音频/视频文件并转换为 16kHz 单声道 Float32 PCM 数据
+    ///
+    /// 对于视频文件，会先通过 FFmpeg 提取音频轨道再加载。
     static func loadAndResample(url: URL) throws -> [Float] {
+        let ext = url.pathExtension.lowercased()
+
+        if kVideoExtensions.contains(ext) {
+            // 视频文件：先用 FFmpeg 提取音频到临时 WAV，再加载
+            let tempAudioURL = FileManager.default.temporaryDirectory
+                .appendingPathComponent("vc_extract_\(UUID().uuidString).wav")
+            defer { try? FileManager.default.removeItem(at: tempAudioURL) }
+
+            try extractAudioFromVideo(from: url, to: tempAudioURL)
+            return try loadAndResampleAudioFile(url: tempAudioURL)
+        } else {
+            return try loadAndResampleAudioFile(url: url)
+        }
+    }
+
+    /// 读取纯音频文件并转换为 16kHz 单声道 Float32 PCM 数据
+    private static func loadAndResampleAudioFile(url: URL) throws -> [Float] {
         let sourceFile = try AVAudioFile(forReading: url)
         let sourceFormat = sourceFile.processingFormat
 
@@ -131,10 +172,56 @@ enum AudioFileService {
         return bufferToFloatArray(targetBuffer)
     }
 
+    // MARK: - 视频音频提取
+
+    /// 使用 FFmpeg 从视频文件中提取音频轨道为 16kHz 单声道 WAV
+    /// - Parameters:
+    ///   - videoURL: 视频文件 URL
+    ///   - audioURL: 输出 WAV 文件 URL
+    static func extractAudioFromVideo(from videoURL: URL, to audioURL: URL) throws {
+        guard let ffmpegPath = Bundle.main.path(forResource: "ffmpeg", ofType: nil) else {
+            throw AudioFileServiceError.ffmpegNotFound
+        }
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: ffmpegPath)
+        process.arguments = [
+            "-y",                       // 覆盖输出
+            "-i", videoURL.path,        // 输入视频
+            "-vn",                      // 去掉视频流
+            "-ar", "16000",             // 16kHz 采样率
+            "-ac", "1",                 // 单声道
+            "-c:a", "pcm_f32le",        // Float32 PCM
+            "-f", "wav",                // 输出 WAV
+            "-loglevel", "error",
+            audioURL.path
+        ]
+
+        // 静默 stdout/stderr
+        let stderrPipe = Pipe()
+        process.standardError = stderrPipe
+        process.standardOutput = FileHandle.nullDevice
+
+        try process.run()
+        process.waitUntilExit()
+
+        guard process.terminationStatus == 0 else {
+            let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+            let errorMsg = String(data: stderrData, encoding: .utf8) ?? "未知错误"
+            throw AudioFileServiceError.audioExtractionFailed(errorMsg)
+        }
+
+        guard FileManager.default.fileExists(atPath: audioURL.path) else {
+            throw AudioFileServiceError.audioExtractionFailed("输出文件不存在")
+        }
+    }
+
     // MARK: - 便捷方法
 
-    /// 从音频文件 URL 直接加载并提取波形采样点（用于可视化）
-    /// - Parameter url: 音频文件 URL
+    /// 从媒体文件 URL 直接加载并提取波形采样点（用于可视化）
+    ///
+    /// 支持音频和视频文件。对于视频文件会自动提取音频轨道。
+    /// - Parameter url: 媒体文件 URL
     /// - Returns: 降采样后的波形 RMS 采样点数组
     static func loadWaveformFromFile(url: URL) throws -> [Float] {
         let audioData = try loadAndResample(url: url)
@@ -142,12 +229,23 @@ enum AudioFileService {
     }
 
     /// 生成降噪输出文件的临时 URL
-    /// - Parameter originalFileName: 原始文件名
-    /// - Returns: 临时目录下的 WAV 文件 URL
-    static func generateTempOutputURL(originalFileName: String) -> URL {
+    /// - Parameters:
+    ///   - originalFileName: 原始文件名
+    ///   - isVideo: 是否为视频文件（视频保留原扩展名，音频输出 WAV）
+    static func generateTempOutputURL(originalFileName: String, isVideo: Bool = false) -> URL {
         let tempDir = FileManager.default.temporaryDirectory
         let baseName = (originalFileName as NSString).deletingPathExtension
-        let outputName = "\(baseName)_denoised.wav"
+
+        let outputExtension: String
+        if isVideo {
+            // 视频文件保留原始容器格式
+            let originalExt = (originalFileName as NSString).pathExtension.lowercased()
+            outputExtension = originalExt.isEmpty ? "mp4" : originalExt
+        } else {
+            outputExtension = "wav"
+        }
+
+        let outputName = "\(baseName)_denoised.\(outputExtension)"
         let outputURL = tempDir.appendingPathComponent(outputName)
 
         // 如果文件已存在则删除
@@ -272,6 +370,9 @@ enum AudioFileServiceError: LocalizedError {
     case converterCreationFailed
     case conversionFailed(String)
     case fileNotFound(String)
+    case ffmpegNotFound
+    case audioExtractionFailed(String)
+    case invalidDuration
 
     var errorDescription: String? {
         switch self {
@@ -285,6 +386,12 @@ enum AudioFileServiceError: LocalizedError {
             return "音频转换失败: \(msg)"
         case .fileNotFound(let path):
             return "找不到文件: \(path)"
+        case .ffmpegNotFound:
+            return "找不到 FFmpeg 可执行文件"
+        case .audioExtractionFailed(let msg):
+            return "从视频提取音频失败: \(msg)"
+        case .invalidDuration:
+            return "无法读取媒体文件时长"
         }
     }
 }
