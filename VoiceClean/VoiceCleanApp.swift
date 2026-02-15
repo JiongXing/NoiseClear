@@ -13,7 +13,7 @@ struct VoiceCleanApp: App {
         WindowGroup {
             ContentView()
         }
-        .defaultSize(width: 800, height: 560)
+        .defaultSize(width: 980, height: 600)
         .windowResizability(.contentMinSize)
     }
 }
