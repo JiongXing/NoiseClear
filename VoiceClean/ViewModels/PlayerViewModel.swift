@@ -98,6 +98,9 @@ final class PlayerViewModel {
     /// 标记是否应继续读取数据
     private var shouldContinueReading: Bool = false
 
+    /// 是否已获取安全作用域访问权限（iOS 文件选择器返回的 URL 需要）
+    private var hasSecurityScopedAccess: Bool = false
+
     /// 标记 FFmpeg 数据已全部读取完毕（但音频可能仍在播放）
     private var allDataRead: Bool = false
 
@@ -117,7 +120,7 @@ final class PlayerViewModel {
 
     /// 加载媒体文件
     func loadFile(url: URL) async {
-        // 清理之前的播放状态
+        // 清理之前的播放状态（会释放旧文件的安全作用域）
         stop()
 
         let ext = url.pathExtension.lowercased()
@@ -126,10 +129,14 @@ final class PlayerViewModel {
             return
         }
 
+        // iOS fileImporter 返回的 URL 是安全作用域资源，必须先获取访问权限
+        let securityScoped = url.startAccessingSecurityScopedResource()
+
         do {
             let fileDuration = try AudioFileService.getMediaDuration(url: url)
 
             self.currentFile = url
+            self.hasSecurityScopedAccess = securityScoped
             self.fileName = url.lastPathComponent
             self.isVideo = kVideoExtensions.contains(ext)
             self.duration = fileDuration
@@ -145,6 +152,8 @@ final class PlayerViewModel {
                 self.avPlayer = nil
             }
         } catch {
+            // 加载失败，释放安全作用域
+            if securityScoped { url.stopAccessingSecurityScopedResource() }
             showErrorMessage("无法读取文件: \(error.localizedDescription)")
         }
     }
@@ -289,6 +298,12 @@ final class PlayerViewModel {
 
         avPlayer?.pause()
         avPlayer?.seek(to: .zero)
+
+        // 释放安全作用域访问权限
+        if hasSecurityScopedAccess, let url = currentFile {
+            url.stopAccessingSecurityScopedResource()
+            hasSecurityScopedAccess = false
+        }
 
         readQueue = nil
         isPlaying = false

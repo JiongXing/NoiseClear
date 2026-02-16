@@ -372,20 +372,29 @@ final class StreamingDenoiser {
             .appendingPathComponent("streaming_denoise_\(UUID().uuidString).wav")
         self.tempFileURL = tempURL
 
-        // 在后台线程中处理（FFmpegLibDenoiser 是同步阻塞的）
-        // 但 start() 本身应阻塞直到文件准备好
-        try FFmpegLibDenoiser.denoiseChunk(
-            inputURL: inputURL,
-            outputURL: tempURL,
-            strength: strength,
-            startTime: startTime,
-            maxDuration: maxDuration,
-            sampleRate: Int32(Self.sampleRate),
-            channels: Int32(Self.channels),
-            isVideo: isVideo
-        )
+        do {
+            // 尝试 FFmpeg 降噪（需要 arnndn/afftdn 滤镜和 wav 格式支持）
+            try FFmpegLibDenoiser.denoiseChunk(
+                inputURL: inputURL,
+                outputURL: tempURL,
+                strength: strength,
+                startTime: startTime,
+                maxDuration: maxDuration,
+                sampleRate: Int32(Self.sampleRate),
+                channels: Int32(Self.channels),
+                isVideo: isVideo
+            )
+        } catch {
+            // FFmpeg 不可用，回退到 AVFoundation（暂无降噪）
+            try convertChunkWithAVFoundation(
+                inputURL: inputURL,
+                outputURL: tempURL,
+                startTime: startTime,
+                maxDuration: maxDuration,
+                isVideo: isVideo
+            )
+        }
 
-        // 打开临时文件用于读取
         self.audioFileReader = try AVAudioFile(forReading: tempURL)
         self.isRunning = true
     }
@@ -400,19 +409,233 @@ final class StreamingDenoiser {
             .appendingPathComponent("streaming_original_\(UUID().uuidString).wav")
         self.tempFileURL = tempURL
 
-        try FFmpegLibDenoiser.originalChunk(
-            inputURL: inputURL,
-            outputURL: tempURL,
-            startTime: startTime,
-            maxDuration: maxDuration,
-            sampleRate: Int32(Self.sampleRate),
-            channels: Int32(Self.channels),
-            isVideo: isVideo
-        )
+        do {
+            // 尝试 FFmpeg 格式转换
+            try FFmpegLibDenoiser.originalChunk(
+                inputURL: inputURL,
+                outputURL: tempURL,
+                startTime: startTime,
+                maxDuration: maxDuration,
+                sampleRate: Int32(Self.sampleRate),
+                channels: Int32(Self.channels),
+                isVideo: isVideo
+            )
+        } catch {
+            try convertChunkWithAVFoundation(
+                inputURL: inputURL,
+                outputURL: tempURL,
+                startTime: startTime,
+                maxDuration: maxDuration,
+                isVideo: isVideo
+            )
+        }
 
         self.audioFileReader = try AVAudioFile(forReading: tempURL)
         self.isRunning = true
     }
+
+    // MARK: - iOS: AVFoundation 回退方案
+
+    /// 使用 AVFoundation 将音频/视频的音频轨道转换为目标格式 WAV 文件
+    ///
+    /// 当 FFmpegKit 构建不包含所需的音频滤镜或封装格式时，使用此方法作为回退。
+    /// 支持 MP3、AAC、WAV、AIFF、FLAC 等音频格式及视频文件。
+    private func convertChunkWithAVFoundation(
+        inputURL: URL,
+        outputURL: URL,
+        startTime: TimeInterval,
+        maxDuration: TimeInterval?,
+        isVideo: Bool
+    ) throws {
+        if isVideo {
+            try convertVideoAudioChunk(
+                inputURL: inputURL,
+                outputURL: outputURL,
+                startTime: startTime,
+                maxDuration: maxDuration
+            )
+        } else {
+            try convertAudioChunk(
+                inputURL: inputURL,
+                outputURL: outputURL,
+                startTime: startTime,
+                maxDuration: maxDuration
+            )
+        }
+    }
+
+    /// WAV 文件设置（磁盘上的格式：交错 Float32 PCM）
+    private static var wavFileSettings: [String: Any] {
+        [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVSampleRateKey: sampleRate,
+            AVNumberOfChannelsKey: channels,
+            AVLinearPCMBitDepthKey: 32,
+            AVLinearPCMIsFloatKey: true,
+            AVLinearPCMIsBigEndianKey: false,
+            AVLinearPCMIsNonInterleaved: false
+        ]
+    }
+
+    /// 使用 AVAudioFile 转换纯音频文件的指定区间
+    private func convertAudioChunk(
+        inputURL: URL,
+        outputURL: URL,
+        startTime: TimeInterval,
+        maxDuration: TimeInterval?
+    ) throws {
+        let inputFile = try AVAudioFile(forReading: inputURL)
+        let inputFormat = inputFile.processingFormat
+        let inputSR = inputFormat.sampleRate
+
+        // 跳转到起始位置
+        let startFrame = AVAudioFramePosition(startTime * inputSR)
+        if startFrame > 0 && startFrame < inputFile.length {
+            inputFile.framePosition = startFrame
+        }
+
+        // 计算要读取的帧数
+        let remaining = AVAudioFrameCount(inputFile.length - inputFile.framePosition)
+        let maxFrames: AVAudioFrameCount
+        if let maxDur = maxDuration, maxDur > 0 {
+            maxFrames = min(AVAudioFrameCount(maxDur * inputSR), remaining)
+        } else {
+            maxFrames = remaining
+        }
+        guard maxFrames > 0 else {
+            throw StreamingDenoiserError.conversionFailed("无可读取的音频帧")
+        }
+
+        // 读取输入数据
+        guard let inputBuffer = AVAudioPCMBuffer(pcmFormat: inputFormat, frameCapacity: maxFrames) else {
+            throw StreamingDenoiserError.conversionFailed("无法创建输入缓冲区")
+        }
+        try inputFile.read(into: inputBuffer, frameCount: maxFrames)
+        guard inputBuffer.frameLength > 0 else {
+            throw StreamingDenoiserError.conversionFailed("读取到空数据")
+        }
+
+        // 目标格式：非交错 Float32（与 Self.outputFormat 一致，匹配 AVAudioFile 默认处理格式）
+        let writeFormat = Self.outputFormat
+
+        // 格式转换
+        guard let converter = AVAudioConverter(from: inputFormat, to: writeFormat) else {
+            throw StreamingDenoiserError.conversionFailed("无法创建格式转换器")
+        }
+        let ratio = Self.sampleRate / inputSR
+        let outCapacity = AVAudioFrameCount(Double(inputBuffer.frameLength) * ratio) + 256
+        guard let outputBuffer = AVAudioPCMBuffer(pcmFormat: writeFormat, frameCapacity: outCapacity) else {
+            throw StreamingDenoiserError.conversionFailed("无法创建输出缓冲区")
+        }
+
+        var isDone = false
+        var convError: NSError?
+        converter.convert(to: outputBuffer, error: &convError) { _, outStatus in
+            if isDone {
+                outStatus.pointee = .noDataNow
+                return nil
+            }
+            isDone = true
+            outStatus.pointee = .haveData
+            return inputBuffer
+        }
+        if let convError {
+            throw StreamingDenoiserError.conversionFailed(convError.localizedDescription)
+        }
+        guard outputBuffer.frameLength > 0 else {
+            throw StreamingDenoiserError.conversionFailed("格式转换输出为空")
+        }
+
+        // 写入临时 WAV 文件
+        // settings 指定磁盘格式（交错 WAV），commonFormat+interleaved 指定处理格式（非交错，匹配 buffer）
+        let outputFile = try AVAudioFile(
+            forWriting: outputURL,
+            settings: Self.wavFileSettings,
+            commonFormat: .pcmFormatFloat32,
+            interleaved: false
+        )
+        try outputFile.write(from: outputBuffer)
+    }
+
+    /// 使用 AVAssetReader 从视频文件提取并转换音频
+    private func convertVideoAudioChunk(
+        inputURL: URL,
+        outputURL: URL,
+        startTime: TimeInterval,
+        maxDuration: TimeInterval?
+    ) throws {
+        let asset = AVURLAsset(url: inputURL)
+        guard let audioTrack = asset.tracks(withMediaType: .audio).first else {
+            throw StreamingDenoiserError.conversionFailed("视频文件中未找到音频轨道")
+        }
+
+        let reader = try AVAssetReader(asset: asset)
+        let start = CMTime(seconds: startTime, preferredTimescale: 48000)
+        let dur = maxDuration.map { CMTime(seconds: $0, preferredTimescale: 48000) } ?? CMTime.positiveInfinity
+        reader.timeRange = CMTimeRange(start: start, duration: dur)
+
+        // AVAssetReader 输出交错格式 PCM
+        let readerSettings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVSampleRateKey: Self.sampleRate,
+            AVNumberOfChannelsKey: Self.channels,
+            AVLinearPCMBitDepthKey: 32,
+            AVLinearPCMIsFloatKey: true,
+            AVLinearPCMIsBigEndianKey: false,
+            AVLinearPCMIsNonInterleaved: false
+        ]
+
+        let trackOutput = AVAssetReaderTrackOutput(track: audioTrack, outputSettings: readerSettings)
+        trackOutput.alwaysCopiesSampleData = false
+        reader.add(trackOutput)
+        guard reader.startReading() else {
+            throw StreamingDenoiserError.conversionFailed(
+                reader.error?.localizedDescription ?? "AVAssetReader 启动失败"
+            )
+        }
+
+        // 交错格式（匹配 AVAssetReader 输出）
+        guard let interleavedFormat = AVAudioFormat(
+            commonFormat: .pcmFormatFloat32,
+            sampleRate: Self.sampleRate,
+            channels: Self.channels,
+            interleaved: true
+        ) else {
+            throw StreamingDenoiserError.conversionFailed("无法创建交错格式")
+        }
+
+        // 写入文件：磁盘格式交错，处理格式也是交错（匹配 AVAssetReader 输出的 buffer）
+        let outputFile = try AVAudioFile(
+            forWriting: outputURL,
+            settings: Self.wavFileSettings,
+            commonFormat: .pcmFormatFloat32,
+            interleaved: true
+        )
+
+        while reader.status == .reading {
+            guard let sampleBuffer = trackOutput.copyNextSampleBuffer() else { break }
+            let numSamples = CMSampleBufferGetNumSamples(sampleBuffer)
+            guard numSamples > 0 else { continue }
+
+            guard let blockBuffer = CMSampleBufferGetDataBuffer(sampleBuffer) else { continue }
+            var totalLength = 0
+            var dataPointer: UnsafeMutablePointer<Int8>?
+            CMBlockBufferGetDataPointer(blockBuffer, atOffset: 0, lengthAtOffsetOut: nil,
+                                        totalLengthOut: &totalLength, dataPointerOut: &dataPointer)
+            guard let data = dataPointer else { continue }
+
+            let frameCount = AVAudioFrameCount(numSamples)
+            guard let buffer = AVAudioPCMBuffer(pcmFormat: interleavedFormat, frameCapacity: frameCount) else { continue }
+            buffer.frameLength = frameCount
+
+            let bytesToCopy = min(totalLength, Int(frameCount) * Int(Self.channels) * MemoryLayout<Float>.size)
+            memcpy(buffer.floatChannelData![0], data, bytesToCopy)
+
+            try outputFile.write(from: buffer)
+        }
+    }
+
+    // MARK: - iOS: 读取 AVAudioFile
 
     private func readFromAudioFile() -> AVAudioPCMBuffer? {
         guard let audioFile = audioFileReader else { return nil }
@@ -446,6 +669,7 @@ enum StreamingDenoiserError: LocalizedError {
     case processLaunchFailed(String)
     #endif
     case modelNotFound
+    case conversionFailed(String)
 
     var errorDescription: String? {
         switch self {
@@ -457,6 +681,8 @@ enum StreamingDenoiserError: LocalizedError {
         #endif
         case .modelNotFound:
             return "找不到 RNNoise 模型文件 (std.rnnn) — 请确保模型文件已添加到项目 Resources 中"
+        case .conversionFailed(let msg):
+            return "音频转换失败: \(msg)"
         }
     }
 }

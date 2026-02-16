@@ -94,6 +94,10 @@ final class AudioViewModel {
             let ext = url.pathExtension.lowercased()
             guard kAllSupportedExtensions.contains(ext) else { continue }
 
+            // iOS fileImporter 返回的 URL 是安全作用域资源，必须先获取访问权限
+            let securityScoped = url.startAccessingSecurityScopedResource()
+            defer { if securityScoped { url.stopAccessingSecurityScopedResource() } }
+
             do {
                 let duration = try AudioFileService.getMediaDuration(url: url)
 
@@ -226,6 +230,10 @@ final class AudioViewModel {
         let isVideo = audioFiles[index].isVideo
         let strength = Float(denoiseStrength)
         let fileIndex = index
+
+        // iOS fileImporter 返回的 URL 是安全作用域资源，处理期间需保持访问权限
+        let securityScoped = inputURL.startAccessingSecurityScopedResource()
+        defer { if securityScoped { inputURL.stopAccessingSecurityScopedResource() } }
 
         do {
             // 生成输出临时文件 URL（视频保留原格式，音频输出 WAV）

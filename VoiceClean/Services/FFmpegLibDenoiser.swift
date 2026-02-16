@@ -72,7 +72,57 @@ enum FFmpegLibError: LocalizedError {
 // MARK: - FFmpeg C API 降噪引擎
 
 /// 使用 FFmpeg Libavfilter 的 arnndn 滤镜进行音频降噪（iOS 专用）
+///
+/// 如果 arnndn 滤镜不可用（取决于 FFmpegKit 构建配置），
+/// 自动回退到 afftdn（FFT 降噪）滤镜。
 final class FFmpegLibDenoiser: @unchecked Sendable {
+
+    /// 检查指定的 avfilter 是否可用
+    static func isFilterAvailable(_ name: String) -> Bool {
+        return avfilter_get_by_name(name) != nil
+    }
+
+    /// 构建降噪滤镜描述（自动选择可用滤镜）
+    ///
+    /// 优先使用 arnndn（RNNoise），不可用时回退到 afftdn（FFT降噪）
+    private static func buildDenoiseFilter(
+        modelPath: String,
+        strength: Float,
+        sampleRate: Int32,
+        channels: Int32
+    ) -> String {
+        let channelLayout = channels == 1 ? "mono" : "stereo"
+        let mix = String(format: "%.2f", max(0, min(1, strength)))
+
+        if isFilterAvailable("arnndn") {
+            // 首选：RNNoise 神经网络降噪
+            return "arnndn=m=\(modelPath):mix=\(mix),aformat=sample_fmts=flt:sample_rates=\(sampleRate):channel_layouts=\(channelLayout)"
+        } else if isFilterAvailable("afftdn") {
+            // 回退：FFT 降噪（将 strength 0~1 映射为 nr 5~40 dB）
+            let nr = Int(5 + strength * 35)
+            return "afftdn=nr=\(nr):nf=-25:nt=w,aformat=sample_fmts=flt:sample_rates=\(sampleRate):channel_layouts=\(channelLayout)"
+        } else {
+            // 无降噪滤镜可用，仅做格式转换
+            return "aformat=sample_fmts=flt:sample_rates=\(sampleRate):channel_layouts=\(channelLayout)"
+        }
+    }
+
+    /// 构建降噪滤镜描述（无 aformat，用于视频处理）
+    private static func buildDenoiseFilterRaw(
+        modelPath: String,
+        strength: Float
+    ) -> String {
+        let mix = String(format: "%.2f", max(0, min(1, strength)))
+
+        if isFilterAvailable("arnndn") {
+            return "arnndn=m=\(modelPath):mix=\(mix)"
+        } else if isFilterAvailable("afftdn") {
+            let nr = Int(5 + strength * 35)
+            return "afftdn=nr=\(nr):nf=-25:nt=w"
+        } else {
+            return "anull"
+        }
+    }
 
     // MARK: - 批量处理（音频文件 → WAV 文件）
 
@@ -96,10 +146,13 @@ final class FFmpegLibDenoiser: @unchecked Sendable {
         onProgress: @escaping @Sendable (Double) -> Void
     ) throws {
         let modelPath = try getModelPath()
-        let mix = String(format: "%.2f", max(0, min(1, strength)))
 
-        // 构建滤镜描述
-        let filterDesc = "arnndn=m=\(modelPath):mix=\(mix),aformat=sample_fmts=flt:sample_rates=\(sampleRate):channel_layouts=\(channels == 1 ? "mono" : "stereo")"
+        let filterDesc = buildDenoiseFilter(
+            modelPath: modelPath,
+            strength: strength,
+            sampleRate: sampleRate,
+            channels: channels
+        )
 
         try processAudioFile(
             inputPath: inputURL.path,
@@ -132,9 +185,8 @@ final class FFmpegLibDenoiser: @unchecked Sendable {
         onProgress: @escaping @Sendable (Double) -> Void
     ) throws {
         let modelPath = try getModelPath()
-        let mix = String(format: "%.2f", max(0, min(1, strength)))
 
-        let filterDesc = "arnndn=m=\(modelPath):mix=\(mix)"
+        let filterDesc = buildDenoiseFilterRaw(modelPath: modelPath, strength: strength)
 
         try processVideoFile(
             inputPath: inputURL.path,
@@ -169,10 +221,13 @@ final class FFmpegLibDenoiser: @unchecked Sendable {
         isVideo: Bool = false
     ) throws {
         let modelPath = try getModelPath()
-        let mix = String(format: "%.2f", max(0, min(1, strength)))
-        let channelLayout = channels == 1 ? "mono" : "stereo"
 
-        let filterDesc = "arnndn=m=\(modelPath):mix=\(mix),aformat=sample_fmts=flt:sample_rates=\(sampleRate):channel_layouts=\(channelLayout)"
+        let filterDesc = buildDenoiseFilter(
+            modelPath: modelPath,
+            strength: strength,
+            sampleRate: sampleRate,
+            channels: channels
+        )
 
         try processAudioFile(
             inputPath: inputURL.path,
