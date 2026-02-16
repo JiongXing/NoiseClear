@@ -6,12 +6,17 @@
 //
 
 import AVFoundation
+#if os(macOS)
 import AppKit
+#endif
 import UniformTypeIdentifiers
 
 // MARK: - 音频文件服务
 
 /// 负责文件选择、音频/视频读取/写入、格式转换
+///
+/// - macOS: 文件选择通过 NSOpenPanel / NSSavePanel
+/// - iOS: 文件选择交由 View 层的 `.fileImporter()` / `.fileExporter()` 驱动
 enum AudioFileService {
 
     // MARK: - 常量
@@ -22,8 +27,9 @@ enum AudioFileService {
     /// 波形可视化的采样点数量
     static let waveformSampleCount: Int = 200
 
-    // MARK: - 文件选择
+    // MARK: - 文件选择（仅 macOS）
 
+    #if os(macOS)
     /// 打开文件选择面板，让用户选择音频或视频文件
     @MainActor
     static func openFilePicker() async -> [URL] {
@@ -41,9 +47,6 @@ enum AudioFileService {
     }
 
     /// 打开保存面板，让用户选择导出位置
-    /// - Parameters:
-    ///   - suggestedName: 建议的文件名
-    ///   - allowedContentTypes: 允许的文件类型（默认 WAV）
     @MainActor
     static func openSavePanel(
         suggestedName: String,
@@ -59,6 +62,7 @@ enum AudioFileService {
         guard response == .OK else { return nil }
         return panel.url
     }
+    #endif
 
     // MARK: - 媒体信息读取
 
@@ -174,11 +178,21 @@ enum AudioFileService {
 
     // MARK: - 视频音频提取
 
-    /// 使用 FFmpeg 从视频文件中提取音频轨道为 16kHz 单声道 WAV
+    /// 从视频文件中提取音频轨道为 16kHz 单声道 WAV
     /// - Parameters:
     ///   - videoURL: 视频文件 URL
     ///   - audioURL: 输出 WAV 文件 URL
     static func extractAudioFromVideo(from videoURL: URL, to audioURL: URL) throws {
+        #if os(macOS)
+        try extractAudioFromVideoWithProcess(from: videoURL, to: audioURL)
+        #else
+        try FFmpegLibDenoiser.extractAudio(from: videoURL, to: audioURL)
+        #endif
+    }
+
+    #if os(macOS)
+    /// macOS: 使用 FFmpeg Process 从视频提取音频
+    private static func extractAudioFromVideoWithProcess(from videoURL: URL, to audioURL: URL) throws {
         guard let ffmpegPath = Bundle.main.path(forResource: "ffmpeg", ofType: nil) else {
             throw AudioFileServiceError.ffmpegNotFound
         }
@@ -197,7 +211,6 @@ enum AudioFileService {
             audioURL.path
         ]
 
-        // 静默 stdout/stderr
         let stderrPipe = Pipe()
         process.standardError = stderrPipe
         process.standardOutput = FileHandle.nullDevice
@@ -215,6 +228,7 @@ enum AudioFileService {
             throw AudioFileServiceError.audioExtractionFailed("输出文件不存在")
         }
     }
+    #endif
 
     // MARK: - 便捷方法
 
@@ -370,7 +384,9 @@ enum AudioFileServiceError: LocalizedError {
     case converterCreationFailed
     case conversionFailed(String)
     case fileNotFound(String)
+    #if os(macOS)
     case ffmpegNotFound
+    #endif
     case audioExtractionFailed(String)
     case invalidDuration
 
@@ -386,8 +402,10 @@ enum AudioFileServiceError: LocalizedError {
             return "音频转换失败: \(msg)"
         case .fileNotFound(let path):
             return "找不到文件: \(path)"
+        #if os(macOS)
         case .ffmpegNotFound:
             return "找不到 FFmpeg 可执行文件"
+        #endif
         case .audioExtractionFailed(let msg):
             return "从视频提取音频失败: \(msg)"
         case .invalidDuration:

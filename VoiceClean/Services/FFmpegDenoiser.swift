@@ -14,7 +14,8 @@ import Foundation
 /// arnndn (Audio Recurrent Neural Network Denoiser) 使用 RNNoise 神经网络
 /// 专门针对人声进行降噪，能有效去除背景噪声同时保留语音质量。
 ///
-/// 处理流程: 输入文件 → FFmpeg Process → arnndn 滤镜 → 输出 WAV 文件
+/// - macOS: 通过 Process 启动 FFmpeg 二进制（性能好，支持 pipe 流式输出）
+/// - iOS: 通过 FFmpegLibDenoiser 直接调用 FFmpeg C API（Libavfilter）
 final class FFmpegDenoiser: Sendable {
 
     // MARK: - 常量
@@ -27,11 +28,13 @@ final class FFmpegDenoiser: Sendable {
     /// 降噪强度 (0.0 ~ 1.0)，映射到 arnndn 的 mix 参数
     private let denoiseStrength: Float
 
-    /// FFmpeg 二进制文件路径
+    #if os(macOS)
+    /// FFmpeg 二进制文件路径（仅 macOS）
     private let ffmpegURL: URL
 
-    /// RNNoise 模型文件路径
+    /// RNNoise 模型文件路径（仅 macOS）
     private let modelURL: URL
+    #endif
 
     // MARK: - 初始化
 
@@ -40,6 +43,7 @@ final class FFmpegDenoiser: Sendable {
     init(strength: Float = 1.0) throws {
         self.denoiseStrength = max(0.0, min(1.0, strength))
 
+        #if os(macOS)
         // 定位 Bundle 内的 FFmpeg 二进制
         guard let ffmpegPath = Bundle.main.path(forResource: "ffmpeg", ofType: nil) else {
             throw FFmpegDenoiserError.ffmpegNotFound
@@ -60,6 +64,12 @@ final class FFmpegDenoiser: Sendable {
                 ofItemAtPath: ffmpegPath
             )
         }
+        #else
+        // iOS: 通过 FFmpegLibDenoiser 使用 C API，仅需验证模型文件存在
+        guard Bundle.main.path(forResource: "std", ofType: "rnnn") != nil else {
+            throw FFmpegDenoiserError.modelNotFound
+        }
+        #endif
     }
 
     // MARK: - 主处理方法
@@ -76,6 +86,72 @@ final class FFmpegDenoiser: Sendable {
         outputURL: URL,
         duration: TimeInterval,
         isVideo: Bool = false,
+        onProgress: @escaping @Sendable (Double) -> Void
+    ) throws {
+        #if os(macOS)
+        try processWithFFmpegCLI(
+            inputURL: inputURL,
+            outputURL: outputURL,
+            duration: duration,
+            isVideo: isVideo,
+            onProgress: onProgress
+        )
+        #else
+        try processWithFFmpegLib(
+            inputURL: inputURL,
+            outputURL: outputURL,
+            duration: duration,
+            isVideo: isVideo,
+            onProgress: onProgress
+        )
+        #endif
+    }
+
+    // MARK: - iOS: 使用 FFmpeg C API
+
+    #if os(iOS)
+    private func processWithFFmpegLib(
+        inputURL: URL,
+        outputURL: URL,
+        duration: TimeInterval,
+        isVideo: Bool,
+        onProgress: @escaping @Sendable (Double) -> Void
+    ) throws {
+        if isVideo {
+            try FFmpegLibDenoiser.denoiseVideo(
+                inputURL: inputURL,
+                outputURL: outputURL,
+                strength: denoiseStrength,
+                duration: duration,
+                onProgress: onProgress
+            )
+        } else {
+            try FFmpegLibDenoiser.denoiseAudio(
+                inputURL: inputURL,
+                outputURL: outputURL,
+                strength: denoiseStrength,
+                sampleRate: Int32(Self.outputSampleRate),
+                channels: 1,
+                duration: duration,
+                onProgress: onProgress
+            )
+        }
+
+        // 验证输出文件存在
+        guard FileManager.default.fileExists(atPath: outputURL.path) else {
+            throw FFmpegDenoiserError.outputFileMissing
+        }
+    }
+    #endif
+
+    // MARK: - macOS: 使用 FFmpeg Process
+
+    #if os(macOS)
+    private func processWithFFmpegCLI(
+        inputURL: URL,
+        outputURL: URL,
+        duration: TimeInterval,
+        isVideo: Bool,
         onProgress: @escaping @Sendable (Double) -> Void
     ) throws {
         // 根据文件类型构建不同的 FFmpeg 参数
@@ -174,12 +250,10 @@ final class FFmpegDenoiser: Sendable {
         onProgress(1.0)
     }
 
-    // MARK: - 私有方法
+    // MARK: - macOS 私有方法
 
     /// 构建纯音频降噪的 FFmpeg 命令行参数
     private func buildArguments(inputPath: String, outputPath: String) -> [String] {
-        // 构建 arnndn 滤镜字符串
-        // mix 参数: 1.0 = 完全降噪, 0.0 = 原始信号
         let mixValue = String(format: "%.2f", denoiseStrength)
         let filterChain = "arnndn=m=\(modelURL.path):mix=\(mixValue)"
 
@@ -198,9 +272,6 @@ final class FFmpegDenoiser: Sendable {
     }
 
     /// 构建视频文件降噪的 FFmpeg 命令行参数
-    ///
-    /// 视频流直接复制（不重新编码），仅对音频轨道应用 arnndn 降噪，
-    /// 音频使用 AAC 192kbps 重新编码以保持与 MP4/MOV 容器的兼容性。
     private func buildVideoArguments(inputPath: String, outputPath: String) -> [String] {
         let mixValue = String(format: "%.2f", denoiseStrength)
         let filterChain = "arnndn=m=\(modelURL.path):mix=\(mixValue)"
@@ -218,27 +289,32 @@ final class FFmpegDenoiser: Sendable {
             outputPath                  // 输出文件路径
         ]
     }
+    #endif
 }
 
 // MARK: - 错误类型
 
 enum FFmpegDenoiserError: LocalizedError {
+    #if os(macOS)
     case ffmpegNotFound
-    case modelNotFound
     case processLaunchFailed(String)
     case processFailed(exitCode: Int32, message: String)
+    #endif
+    case modelNotFound
     case outputFileMissing
 
     var errorDescription: String? {
         switch self {
+        #if os(macOS)
         case .ffmpegNotFound:
             return "找不到 FFmpeg 可执行文件 — 请确保 ffmpeg 已添加到项目 Resources 中"
-        case .modelNotFound:
-            return "找不到 RNNoise 模型文件 (std.rnnn) — 请确保模型文件已添加到项目 Resources 中"
         case .processLaunchFailed(let msg):
             return "FFmpeg 进程启动失败: \(msg)"
         case .processFailed(let code, let msg):
             return "FFmpeg 处理失败 (退出码 \(code)): \(msg)"
+        #endif
+        case .modelNotFound:
+            return "找不到 RNNoise 模型文件 (std.rnnn) — 请确保模型文件已添加到项目 Resources 中"
         case .outputFileMissing:
             return "FFmpeg 处理完成但输出文件不存在"
         }

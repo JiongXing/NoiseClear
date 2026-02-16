@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 // MARK: - 降噪播放页面
 
@@ -51,8 +52,27 @@ struct DenoisePlayerView: View {
                 .padding(.vertical, 16)
             }
         }
+        #if os(macOS)
         .frame(minWidth: 500, minHeight: 450)
-        .background(Color(nsColor: .windowBackgroundColor))
+        #endif
+        .background(Color.platformBackground)
+        #if os(iOS)
+        .fileImporter(
+            isPresented: $viewModel.showFilePicker,
+            allowedContentTypes: [.audio, .mpeg4Movie, .quickTimeMovie],
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let urls):
+                if let url = urls.first {
+                    Task { await viewModel.loadFile(url: url) }
+                }
+            case .failure(let error):
+                viewModel.errorMessage = error.localizedDescription
+                viewModel.showError = true
+            }
+        }
+        #endif
         .alert("错误", isPresented: $viewModel.showError) {
             Button("确定", role: .cancel) {}
         } message: {
@@ -411,5 +431,7 @@ extension PlayerViewModel {
 
 #Preview {
     DenoisePlayerView()
+    #if os(macOS)
         .frame(width: 700, height: 600)
+    #endif
 }

@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 // MARK: - 文件转换页面
 
@@ -67,8 +68,25 @@ struct FileConversionView: View {
                     .padding(.vertical, 12)
             }
         }
+        #if os(macOS)
         .frame(minWidth: 500, minHeight: 450)
-        .background(Color(nsColor: .windowBackgroundColor))
+        #endif
+        .background(Color.platformBackground)
+        #if os(iOS)
+        .fileImporter(
+            isPresented: $viewModel.showFilePicker,
+            allowedContentTypes: [.audio, .mpeg4Movie, .quickTimeMovie],
+            allowsMultipleSelection: true
+        ) { result in
+            switch result {
+            case .success(let urls):
+                Task { await viewModel.addFiles(from: urls) }
+            case .failure(let error):
+                viewModel.errorMessage = error.localizedDescription
+                viewModel.showError = true
+            }
+        }
+        #endif
         .alert("错误", isPresented: $viewModel.showError) {
             Button("确定", role: .cancel) {}
         } message: {
@@ -285,5 +303,7 @@ struct FileConversionView: View {
 
 #Preview {
     FileConversionView()
+    #if os(macOS)
         .frame(width: 700, height: 560)
+    #endif
 }

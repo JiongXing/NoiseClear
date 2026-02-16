@@ -6,6 +6,15 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		965B9B662F4352D300460E21 /* Libavformat in Frameworks */ = {isa = PBXBuildFile; productRef = 965B9B612F4352D300460E21 /* Libavformat */; };
+		965B9B672F4352D300460E21 /* Libavcodec in Frameworks */ = {isa = PBXBuildFile; productRef = 965B9B622F4352D300460E21 /* Libavcodec */; };
+		965B9B682F4352D300460E21 /* Libavfilter in Frameworks */ = {isa = PBXBuildFile; productRef = 965B9B632F4352D300460E21 /* Libavfilter */; };
+		965B9B692F4352D300460E21 /* Libavutil in Frameworks */ = {isa = PBXBuildFile; productRef = 965B9B642F4352D300460E21 /* Libavutil */; };
+		965B9B6A2F4352D300460E21 /* Libswresample in Frameworks */ = {isa = PBXBuildFile; productRef = 965B9B652F4352D300460E21 /* Libswresample */; };
+		965B9B6B2F4352D300460E21 /* FFmpegKit in Frameworks */ = {isa = PBXBuildFile; productRef = 965B9B6C2F4352D300460E21 /* FFmpegKit */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		966DFB4F2F3DBC3100A90038 /* VoiceClean.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VoiceClean.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +32,12 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				965B9B6B2F4352D300460E21 /* FFmpegKit in Frameworks */,
+				965B9B662F4352D300460E21 /* Libavformat in Frameworks */,
+				965B9B672F4352D300460E21 /* Libavcodec in Frameworks */,
+				965B9B682F4352D300460E21 /* Libavfilter in Frameworks */,
+				965B9B692F4352D300460E21 /* Libavutil in Frameworks */,
+				965B9B6A2F4352D300460E21 /* Libswresample in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +80,12 @@
 			);
 			name = VoiceClean;
 			packageProductDependencies = (
+				965B9B6C2F4352D300460E21 /* FFmpegKit */,
+				965B9B612F4352D300460E21 /* Libavformat */,
+				965B9B622F4352D300460E21 /* Libavcodec */,
+				965B9B632F4352D300460E21 /* Libavfilter */,
+				965B9B642F4352D300460E21 /* Libavutil */,
+				965B9B652F4352D300460E21 /* Libswresample */,
 			);
 			productName = VoiceClean;
 			productReference = 966DFB4F2F3DBC3100A90038 /* VoiceClean.app */;
@@ -94,6 +115,9 @@
 			);
 			mainGroup = 966DFB462F3DBC3100A90038;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				965B9B602F4352D200460E21 /* XCRemoteSwiftPackageReference "FFmpegKit" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 966DFB502F3DBC3100A90038 /* Products */;
 			projectDirPath = "";
@@ -177,6 +201,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
@@ -234,6 +259,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MTL_ENABLE_DEBUG_INFO = NO;
@@ -254,9 +280,19 @@
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readwrite;
+				"EXCLUDED_SOURCE_FILE_NAMES[sdk=iphoneos*]" = ffmpeg;
+				"EXCLUDED_SOURCE_FILE_NAMES[sdk=iphonesimulator*]" = ffmpeg;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				LD_RUNPATH_SEARCH_PATHS = (
+				"LD_RUNPATH_SEARCH_PATHS[sdk=iphoneos*]" = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=iphonesimulator*]" = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
@@ -264,12 +300,16 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.jiongxing.VoiceClean;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
+				SHALLOW_BUNDLE = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -284,9 +324,19 @@
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readwrite;
+				"EXCLUDED_SOURCE_FILE_NAMES[sdk=iphoneos*]" = ffmpeg;
+				"EXCLUDED_SOURCE_FILE_NAMES[sdk=iphonesimulator*]" = ffmpeg;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				LD_RUNPATH_SEARCH_PATHS = (
+				"LD_RUNPATH_SEARCH_PATHS[sdk=iphoneos*]" = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=iphonesimulator*]" = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
@@ -294,12 +344,16 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.jiongxing.VoiceClean;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
+				SHALLOW_BUNDLE = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -325,6 +379,50 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		965B9B602F4352D200460E21 /* XCRemoteSwiftPackageReference "FFmpegKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/kingslay/FFmpegKit.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 6.1.3;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		965B9B612F4352D300460E21 /* Libavformat */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 965B9B602F4352D200460E21 /* XCRemoteSwiftPackageReference "FFmpegKit" */;
+			productName = Libavformat;
+		};
+		965B9B622F4352D300460E21 /* Libavcodec */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 965B9B602F4352D200460E21 /* XCRemoteSwiftPackageReference "FFmpegKit" */;
+			productName = Libavcodec;
+		};
+		965B9B632F4352D300460E21 /* Libavfilter */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 965B9B602F4352D200460E21 /* XCRemoteSwiftPackageReference "FFmpegKit" */;
+			productName = Libavfilter;
+		};
+		965B9B642F4352D300460E21 /* Libavutil */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 965B9B602F4352D200460E21 /* XCRemoteSwiftPackageReference "FFmpegKit" */;
+			productName = Libavutil;
+		};
+		965B9B652F4352D300460E21 /* Libswresample */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 965B9B602F4352D200460E21 /* XCRemoteSwiftPackageReference "FFmpegKit" */;
+			productName = Libswresample;
+		};
+		965B9B6C2F4352D300460E21 /* FFmpegKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 965B9B602F4352D200460E21 /* XCRemoteSwiftPackageReference "FFmpegKit" */;
+			productName = FFmpegKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 966DFB472F3DBC3100A90038 /* Project object */;
 }

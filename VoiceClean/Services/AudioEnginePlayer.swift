@@ -85,6 +85,13 @@ final class AudioEnginePlayer {
     func setup(format: AVAudioFormat) throws {
         self.format = format
 
+        // iOS: 配置 AVAudioSession
+        #if os(iOS)
+        let session = AVAudioSession.sharedInstance()
+        try session.setCategory(.playback, mode: .default)
+        try session.setActive(true)
+        #endif
+
         // 连接节点: playerNode → mainMixerNode → outputNode
         engine.attach(playerNode)
         engine.connect(playerNode, to: engine.mainMixerNode, format: format)

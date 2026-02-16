@@ -37,7 +37,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
 
 struct ContentView: View {
 
-    @State private var selectedItem: SidebarItem = .denoisePlayer
+    @State private var selectedItem: SidebarItem? = .denoisePlayer
 
     var body: some View {
         NavigationSplitView {
@@ -60,10 +60,12 @@ struct ContentView: View {
                 .padding(.vertical, 4)
                 .tag(item)
             }
+            #if os(macOS)
             .navigationSplitViewColumnWidth(min: 160, ideal: 190, max: 230)
+            #endif
             .listStyle(.sidebar)
         } detail: {
-            switch selectedItem {
+            switch selectedItem ?? .denoisePlayer {
             case .fileConversion:
                 FileConversionView()
             case .denoisePlayer:
@@ -75,5 +77,7 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
+    #if os(macOS)
         .frame(width: 980, height: 600)
+    #endif
 }

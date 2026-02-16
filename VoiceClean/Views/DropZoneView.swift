@@ -57,6 +57,7 @@ struct DropZoneView: View {
                     .animation(.spring(response: 0.3), value: isTargeted)
 
                 VStack(spacing: 4) {
+                    #if os(macOS)
                     Text("拖拽音频/视频文件到此处")
                         .font(.headline)
                         .foregroundStyle(.primary)
@@ -64,6 +65,11 @@ struct DropZoneView: View {
                     Text("或点击选择文件")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                    #else
+                    Text("点击选择音频/视频文件")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    #endif
 
                     Text("支持 MP3、M4A、WAV、AAC、FLAC、MP4、MOV 格式")
                         .font(.caption)

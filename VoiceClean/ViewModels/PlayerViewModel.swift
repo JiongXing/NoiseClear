@@ -66,6 +66,13 @@ final class PlayerViewModel {
     var errorMessage: String?
     var showError: Bool = false
 
+    // MARK: - iOS 文件选择状态
+
+    #if os(iOS)
+    /// 是否展示文件选择器
+    var showFilePicker: Bool = false
+    #endif
+
     // MARK: - 视频播放器（供 VideoPlayerView 使用）
 
     /// AVPlayer 实例，视频文件时非 nil
@@ -144,9 +151,13 @@ final class PlayerViewModel {
 
     /// 通过文件选择面板导入
     func selectFile() async {
+        #if os(macOS)
         let urls = await AudioFileService.openFilePicker()
         guard let url = urls.first else { return }
         await loadFile(url: url)
+        #else
+        showFilePicker = true
+        #endif
     }
 
     // MARK: - 播放控制
@@ -204,7 +215,9 @@ final class PlayerViewModel {
             )
 
             guard prefilledDuration > 0 else {
-                throw StreamingDenoiserError.processLaunchFailed("无法读取音频数据")
+                throw NSError(domain: "PlayerViewModel", code: -1, userInfo: [
+                    NSLocalizedDescriptionKey: "无法读取音频数据"
+                ])
             }
 
             // 开始播放

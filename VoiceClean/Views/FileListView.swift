@@ -65,7 +65,9 @@ struct AudioFileRow: View {
     var onRemove: () -> Void
     var onExport: () -> Void
 
+    #if os(macOS)
     @State private var isHovered = false
+    #endif
 
     var body: some View {
         HStack(spacing: 12) {
@@ -109,7 +111,9 @@ struct AudioFileRow: View {
                             .font(.system(size: 13))
                     }
                     .buttonStyle(.borderless)
+                    #if os(macOS)
                     .help("导出文件")
+                    #endif
                 }
 
                 if !file.status.isProcessing {
@@ -119,8 +123,10 @@ struct AudioFileRow: View {
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.borderless)
+                    #if os(macOS)
                     .opacity(isHovered ? 1 : 0)
                     .help("移除文件")
+                    #endif
                 }
             }
         }
@@ -128,7 +134,11 @@ struct AudioFileRow: View {
         .padding(.vertical, 8)
         .background {
             RoundedRectangle(cornerRadius: 8)
+                #if os(macOS)
                 .fill(isSelected ? Color.accentColor.opacity(0.12) : (isHovered ? Color.primary.opacity(0.04) : .clear))
+                #else
+                .fill(isSelected ? Color.accentColor.opacity(0.12) : .clear)
+                #endif
         }
         .overlay {
             if isSelected {
@@ -136,10 +146,12 @@ struct AudioFileRow: View {
                     .strokeBorder(Color.accentColor.opacity(0.3), lineWidth: 1)
             }
         }
+        #if os(macOS)
         .onHover { hovering in
             isHovered = hovering
         }
         .animation(.easeInOut(duration: 0.15), value: isHovered)
+        #endif
         .animation(.easeInOut(duration: 0.15), value: isSelected)
     }
 

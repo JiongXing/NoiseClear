@@ -10,19 +10,20 @@ import SwiftUI
 
 // MARK: - 视频播放视图
 
-/// 使用 AVPlayerView 显示视频画面的 NSViewRepresentable 包装
+#if os(macOS)
+
+/// macOS: 使用 AVPlayerView 的 NSViewRepresentable 包装
 ///
 /// 视频播放时音频由 AVAudioEngine 接管（AVPlayer 静音），
 /// 本视图仅负责渲染视频画面。
 struct VideoPlayerView: NSViewRepresentable {
 
-    /// AVPlayer 实例（由 PlayerViewModel 管理）
     let player: AVPlayer
 
     func makeNSView(context: Context) -> AVPlayerView {
         let view = AVPlayerView()
         view.player = player
-        view.controlsStyle = .none  // 隐藏原生控件，使用自定义控件
+        view.controlsStyle = .none
         view.showsFullScreenToggleButton = false
         view.allowsPictureInPicturePlayback = false
         return view
@@ -34,3 +35,27 @@ struct VideoPlayerView: NSViewRepresentable {
         }
     }
 }
+
+#else
+
+/// iOS: 使用 AVPlayerViewController 的 UIViewControllerRepresentable 包装
+struct VideoPlayerView: UIViewControllerRepresentable {
+
+    let player: AVPlayer
+
+    func makeUIViewController(context: Context) -> AVPlayerViewController {
+        let controller = AVPlayerViewController()
+        controller.player = player
+        controller.showsPlaybackControls = false
+        controller.allowsPictureInPicturePlayback = false
+        return controller
+    }
+
+    func updateUIViewController(_ uiViewController: AVPlayerViewController, context: Context) {
+        if uiViewController.player !== player {
+            uiViewController.player = player
+        }
+    }
+}
+
+#endif

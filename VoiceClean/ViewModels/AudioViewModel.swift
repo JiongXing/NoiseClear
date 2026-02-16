@@ -34,6 +34,19 @@ final class AudioViewModel {
     /// 当前选中的文件 ID（用于详情/波形展示）
     var selectedFileID: UUID?
 
+    // MARK: - iOS 文件选择状态（由 View 层的 .fileImporter/.fileExporter 消费）
+
+    #if os(iOS)
+    /// 是否展示文件选择器（由 View 层 .fileImporter 绑定）
+    var showFilePicker: Bool = false
+
+    /// 是否展示保存面板（由 View 层 .fileExporter 绑定）
+    var showSavePanel: Bool = false
+
+    /// 待导出的文件（用于 .fileExporter）
+    var pendingExportFile: AudioFileItem?
+    #endif
+
     // MARK: - 计算属性
 
     /// 是否有文件可以处理
@@ -63,8 +76,12 @@ final class AudioViewModel {
 
     /// 通过文件选择面板添加文件
     func addFiles() async {
+        #if os(macOS)
         let urls = await AudioFileService.openFilePicker()
         await addFiles(from: urls)
+        #else
+        showFilePicker = true
+        #endif
     }
 
     /// 通过 URL 列表添加文件（支持拖拽）
@@ -140,11 +157,10 @@ final class AudioViewModel {
 
     /// 导出单个已完成的文件
     func exportFile(_ item: AudioFileItem) async {
-        guard case .completed(let tempURL) = item.status else { return }
+        guard case .completed(_) = item.status else { return }
 
+        #if os(macOS)
         let baseName = (item.fileName as NSString).deletingPathExtension
-
-        // 视频文件保留原格式，音频文件输出 WAV
         let suggestedName: String
         let allowedContentTypes: [UTType]
 
@@ -157,6 +173,7 @@ final class AudioViewModel {
             allowedContentTypes = [.wav]
         }
 
+        guard case .completed(let tempURL) = item.status else { return }
         guard let saveURL = await AudioFileService.openSavePanel(
             suggestedName: suggestedName,
             allowedContentTypes: allowedContentTypes
@@ -167,7 +184,23 @@ final class AudioViewModel {
         } catch {
             showErrorMessage("导出失败: \(error.localizedDescription)")
         }
+        #else
+        pendingExportFile = item
+        showSavePanel = true
+        #endif
     }
+
+    #if os(iOS)
+    /// iOS: 将文件导出到用户选择的位置
+    func exportFileToURL(_ item: AudioFileItem, destination: URL) {
+        guard case .completed(let tempURL) = item.status else { return }
+        do {
+            try AudioFileService.exportFile(from: tempURL, to: destination)
+        } catch {
+            showErrorMessage("导出失败: \(error.localizedDescription)")
+        }
+    }
+    #endif
 
     /// 导出所有已完成的文件
     func exportAll() async {
