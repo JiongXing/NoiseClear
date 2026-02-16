@@ -25,7 +25,7 @@ final class AudioViewModel {
     var isProcessing: Bool = false
 
     /// 降噪强度 (0.0 ~ 1.0)
-    var denoiseStrength: Double = 0.8
+    var denoiseStrength: Double = 1.0
 
     /// 全局错误消息（用于 Alert 展示）
     var errorMessage: String?

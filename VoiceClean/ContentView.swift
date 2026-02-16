@@ -11,8 +11,8 @@ import SwiftUI
 
 /// 应用的两大功能模块
 enum SidebarItem: String, CaseIterable, Identifiable {
-    case fileConversion = "文件转换"
     case denoisePlayer = "降噪播放"
+    case fileConversion = "文件转换"
 
     var id: String { rawValue }
 
@@ -37,7 +37,7 @@ enum SidebarItem: String, CaseIterable, Identifiable {
 
 struct ContentView: View {
 
-    @State private var selectedItem: SidebarItem = .fileConversion
+    @State private var selectedItem: SidebarItem = .denoisePlayer
 
     var body: some View {
         NavigationSplitView {

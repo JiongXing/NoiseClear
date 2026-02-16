@@ -47,7 +47,7 @@ final class PlayerViewModel {
     var isLoading: Bool = false
 
     /// 降噪强度 (0.1 ~ 1.0)
-    var denoiseStrength: Double = 0.8
+    var denoiseStrength: Double = 1.0
 
     /// 是否启用降噪（关闭时播放原始音频做对比）
     var denoiseEnabled: Bool = true
