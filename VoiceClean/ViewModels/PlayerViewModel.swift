@@ -94,8 +94,17 @@ final class PlayerViewModel {
     /// 标记 FFmpeg 数据已全部读取完毕（但音频可能仍在播放）
     private var allDataRead: Bool = false
 
-    /// 预填充 buffer 数量（播放前先缓冲避免卡顿）
-    private let prefillBufferCount = 8
+    /// 每次按小段预降噪的时长（秒）
+    private let chunkDuration: TimeInterval = 4.0
+
+    /// 播放启动前最少预填充时长（秒）
+    private let initialPrefillDuration: TimeInterval = 0.8
+
+    /// 后台读取时允许的最大预缓冲时长（秒）
+    private let maxBufferedDuration: TimeInterval = 2.0
+
+    /// 当前应处理的下一段起始时间（秒）
+    private var nextChunkStartTime: TimeInterval = 0
 
     // MARK: - 文件管理
 
@@ -159,26 +168,21 @@ final class PlayerViewModel {
         isLoading = true
         isFinished = false
         allDataRead = false
+        nextChunkStartTime = seekOffset
 
         do {
             // 创建流式降噪引擎
             let newDenoiser = try StreamingDenoiser()
 
-            // 根据是否启用降噪选择不同的启动方式
-            if denoiseEnabled {
-                try newDenoiser.start(
-                    inputURL: fileURL,
-                    strength: Float(denoiseStrength),
-                    startTime: seekOffset,
-                    isVideo: isVideo
-                )
-            } else {
-                try newDenoiser.startOriginal(
-                    inputURL: fileURL,
-                    startTime: seekOffset,
-                    isVideo: isVideo
-                )
-            }
+            // 只启动首个小段，而不是整段文件
+            let initialChunkDuration = min(chunkDuration, max(0, duration - nextChunkStartTime))
+            try startDenoiserChunk(
+                denoiser: newDenoiser,
+                fileURL: fileURL,
+                startTime: nextChunkStartTime,
+                chunkDuration: initialChunkDuration
+            )
+            nextChunkStartTime += initialChunkDuration
             self.denoiser = newDenoiser
 
             // 创建音频播放引擎
@@ -192,18 +196,14 @@ final class PlayerViewModel {
             self.readQueue = queue
             self.shouldContinueReading = true
 
-            // 预填充 buffer
-            var prefilled = 0
-            for _ in 0..<prefillBufferCount {
-                if let buffer = newDenoiser.readNextBuffer() {
-                    newPlayer.scheduleBuffer(buffer)
-                    prefilled += 1
-                } else {
-                    break
-                }
-            }
+            // 预填充：只准备即将播放的一小段
+            let prefilledDuration = try prefillInitialBuffers(
+                denoiser: newDenoiser,
+                player: newPlayer,
+                fileURL: fileURL
+            )
 
-            guard prefilled > 0 else {
+            guard prefilledDuration > 0 else {
                 throw StreamingDenoiserError.processLaunchFailed("无法读取音频数据")
             }
 
@@ -220,7 +220,12 @@ final class PlayerViewModel {
             }
 
             // 启动后台持续读取
-            startReadingLoop(denoiser: newDenoiser, player: newPlayer, queue: queue)
+            startReadingLoop(
+                denoiser: newDenoiser,
+                player: newPlayer,
+                queue: queue,
+                fileURL: fileURL
+            )
 
             // 启动时间更新定时器
             startTimeUpdateTimer()
@@ -233,6 +238,10 @@ final class PlayerViewModel {
 
     /// 暂停播放
     func pause() {
+        // 记录当前时间作为下次 seek 偏移
+        seekOffset = currentTime
+
+        // 先标记停止读取，后台线程会自行退出并调用 activeDenoiser.stop()
         shouldContinueReading = false
         audioPlayer?.pause()
         avPlayer?.pause()
@@ -240,9 +249,17 @@ final class PlayerViewModel {
         timeUpdateTimer = nil
         isPlaying = false
 
-        // 记录当前时间作为下次 seek 偏移
-        seekOffset = currentTime
-        cleanupPlayback()
+        // 将阻塞性的清理操作移到后台队列，避免阻塞主线程
+        let playerToStop = audioPlayer
+        let denoiserToStop = denoiser
+        audioPlayer = nil
+        denoiser = nil
+        readQueue = nil
+
+        DispatchQueue.global(qos: .utility).async {
+            playerToStop?.stop()
+            denoiserToStop?.stop()
+        }
     }
 
     /// 停止播放并完全清理
@@ -267,6 +284,7 @@ final class PlayerViewModel {
         seekOffset = 0
         isFinished = false
         allDataRead = false
+        nextChunkStartTime = 0
     }
 
     /// 跳转到指定时间
@@ -284,11 +302,13 @@ final class PlayerViewModel {
         denoiser = nil
         readQueue = nil
         isPlaying = false
+        allDataRead = false
 
         // 更新偏移
         seekOffset = clampedTime
         currentTime = clampedTime
         isFinished = false
+        nextChunkStartTime = clampedTime
 
         // 如果之前在播放，重新开始
         if wasPlaying {
@@ -302,21 +322,118 @@ final class PlayerViewModel {
     private func startReadingLoop(
         denoiser: StreamingDenoiser,
         player: AudioEnginePlayer,
-        queue: DispatchQueue
+        queue: DispatchQueue,
+        fileURL: URL
     ) {
         queue.async { [weak self] in
+            var activeDenoiser = denoiser
             while let self {
                 guard self.shouldContinueReading else { break }
-                guard let buffer = denoiser.readNextBuffer() else {
-                    // EOF：所有数据已读取，但不停止播放
-                    // 让定时器检测 playerNode 是否真正播完
+
+                // 仅保持小窗口预缓冲，避免提前处理整段文件
+                if player.bufferedDuration >= self.maxBufferedDuration {
+                    Thread.sleep(forTimeInterval: 0.03)
+                    continue
+                }
+
+                if let buffer = activeDenoiser.readNextBuffer() {
+                    player.scheduleBuffer(buffer)
+                    continue
+                }
+
+                activeDenoiser.stop()
+
+                // 当前 chunk 已读完，按播放位置继续处理下一小段
+                let remaining = self.duration - self.nextChunkStartTime
+                guard remaining > 0.01 else {
                     DispatchQueue.main.async {
                         self.allDataRead = true
                     }
                     return
                 }
-                player.scheduleBuffer(buffer)
+
+                let nextDuration = min(self.chunkDuration, remaining)
+                do {
+                    let nextDenoiser = try StreamingDenoiser()
+                    try self.startDenoiserChunk(
+                        denoiser: nextDenoiser,
+                        fileURL: fileURL,
+                        startTime: self.nextChunkStartTime,
+                        chunkDuration: nextDuration
+                    )
+                    self.nextChunkStartTime += nextDuration
+                    self.denoiser = nextDenoiser
+                    activeDenoiser = nextDenoiser
+                } catch {
+                    DispatchQueue.main.async {
+                        self.showErrorMessage("播放失败: \(error.localizedDescription)")
+                        self.pause()
+                    }
+                    return
+                }
             }
+            activeDenoiser.stop()
+        }
+    }
+
+    /// 播放前预填充少量数据，避免起播卡顿
+    private func prefillInitialBuffers(
+        denoiser: StreamingDenoiser,
+        player: AudioEnginePlayer,
+        fileURL: URL
+    ) throws -> TimeInterval {
+        var buffered: TimeInterval = 0
+        var activeDenoiser = denoiser
+
+        while buffered < initialPrefillDuration {
+            if let buffer = activeDenoiser.readNextBuffer() {
+                player.scheduleBuffer(buffer)
+                buffered += TimeInterval(buffer.frameLength) / StreamingDenoiser.sampleRate
+                continue
+            }
+
+            activeDenoiser.stop()
+            let remaining = duration - nextChunkStartTime
+            guard remaining > 0.01 else { break }
+
+            let nextDuration = min(chunkDuration, remaining)
+            let nextDenoiser = try StreamingDenoiser()
+            try startDenoiserChunk(
+                denoiser: nextDenoiser,
+                fileURL: fileURL,
+                startTime: nextChunkStartTime,
+                chunkDuration: nextDuration
+            )
+            nextChunkStartTime += nextDuration
+            self.denoiser = nextDenoiser
+            activeDenoiser = nextDenoiser
+        }
+
+        return buffered
+    }
+
+    /// 启动一个指定区间的小段降噪（或原始）读取
+    private func startDenoiserChunk(
+        denoiser: StreamingDenoiser,
+        fileURL: URL,
+        startTime: TimeInterval,
+        chunkDuration: TimeInterval
+    ) throws {
+        if denoiseEnabled {
+            try denoiser.start(
+                inputURL: fileURL,
+                strength: Float(denoiseStrength),
+                startTime: startTime,
+                maxDuration: chunkDuration,
+                isVideo: isVideo
+            )
+        } else {
+            try denoiser.startOriginal(
+                inputURL: fileURL,
+                startTime: startTime,
+                maxDuration: chunkDuration,
+                isVideo: isVideo
+            )
         }
     }
 
@@ -356,13 +473,18 @@ final class PlayerViewModel {
         }
     }
 
-    /// 清理播放资源（保留文件和 avPlayer）
+    /// 清理播放资源（保留文件和 avPlayer），非阻塞
     private func cleanupPlayback() {
-        audioPlayer?.stop()
+        let playerToStop = audioPlayer
+        let denoiserToStop = denoiser
         audioPlayer = nil
-        denoiser?.stop()
         denoiser = nil
         readQueue = nil
+
+        DispatchQueue.global(qos: .utility).async {
+            playerToStop?.stop()
+            denoiserToStop?.stop()
+        }
     }
 
     /// 显示错误消息

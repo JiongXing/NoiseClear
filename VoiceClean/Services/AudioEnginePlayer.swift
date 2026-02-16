@@ -30,6 +30,9 @@ final class AudioEnginePlayer {
     /// 已调度的总帧数（用于计算播放时间）
     private var scheduledFrameCount: Int64 = 0
 
+    /// 当前队列中待播放的帧数（用于限制预缓冲大小）
+    private var pendingFrameCount: Int64 = 0
+
     /// 用于线程安全更新帧计数
     private let frameLock = NSLock()
 
@@ -66,6 +69,15 @@ final class AudioEnginePlayer {
         return Double(playerTime.sampleTime) / playerTime.sampleRate
     }
 
+    /// 当前缓冲队列的时长（秒）
+    var bufferedDuration: TimeInterval {
+        guard let fmt = format, fmt.sampleRate > 0 else { return 0 }
+        frameLock.lock()
+        let pending = pendingFrameCount
+        frameLock.unlock()
+        return max(0, Double(pending) / fmt.sampleRate)
+    }
+
     // MARK: - 配置
 
     /// 配置音频引擎
@@ -89,10 +101,14 @@ final class AudioEnginePlayer {
     /// 调用时不要求在主线程。
     func scheduleBuffer(_ buffer: AVAudioPCMBuffer) {
         let frameCount = Int64(buffer.frameLength)
+        frameLock.lock()
+        pendingFrameCount += frameCount
+        frameLock.unlock()
         playerNode.scheduleBuffer(buffer, completionCallbackType: .dataConsumed) { [weak self] _ in
             guard let self else { return }
             self.frameLock.lock()
             self.scheduledFrameCount += frameCount
+            self.pendingFrameCount = max(0, self.pendingFrameCount - frameCount)
             self.frameLock.unlock()
         }
     }
@@ -124,6 +140,7 @@ final class AudioEnginePlayer {
         // 重置状态
         frameLock.lock()
         scheduledFrameCount = 0
+        pendingFrameCount = 0
         frameLock.unlock()
 
         // 断开并重新准备，以便下次 setup

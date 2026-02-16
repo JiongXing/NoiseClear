@@ -69,6 +69,9 @@ final class StreamingDenoiser {
     /// 是否已启动
     private(set) var isRunning: Bool = false
 
+    /// 线程安全锁，防止 stop() 被多线程同时执行
+    private let stopLock = NSLock()
+
     // MARK: - 初始化
 
     init() throws {
@@ -101,6 +104,7 @@ final class StreamingDenoiser {
         inputURL: URL,
         strength: Float,
         startTime: TimeInterval = 0,
+        maxDuration: TimeInterval? = nil,
         isVideo: Bool = false
     ) throws {
         // 先停止已有进程
@@ -118,6 +122,10 @@ final class StreamingDenoiser {
         }
 
         arguments += ["-i", inputURL.path]
+
+        if let maxDuration, maxDuration > 0.01 {
+            arguments += ["-t", String(format: "%.3f", maxDuration)]
+        }
 
         // 视频文件丢弃视频流
         if isVideo {
@@ -160,6 +168,7 @@ final class StreamingDenoiser {
     func startOriginal(
         inputURL: URL,
         startTime: TimeInterval = 0,
+        maxDuration: TimeInterval? = nil,
         isVideo: Bool = false
     ) throws {
         stop()
@@ -171,6 +180,10 @@ final class StreamingDenoiser {
         }
 
         arguments += ["-i", inputURL.path]
+
+        if let maxDuration, maxDuration > 0.01 {
+            arguments += ["-t", String(format: "%.3f", maxDuration)]
+        }
 
         if isVideo {
             arguments += ["-vn"]
@@ -250,20 +263,32 @@ final class StreamingDenoiser {
 
     // MARK: - 停止
 
-    /// 停止 FFmpeg 进程并清理资源
+    /// 停止 FFmpeg 进程并清理资源（线程安全）
     func stop() {
-        if let proc = process, proc.isRunning {
-            proc.terminate()
-            proc.waitUntilExit()
-        }
-        // 关闭 pipe
-        try? stdoutPipe?.fileHandleForReading.close()
-        try? stderrPipe?.fileHandleForReading.close()
+        stopLock.lock()
 
-        process = nil
-        stdoutPipe = nil
-        stderrPipe = nil
-        isRunning = false
+        let proc = self.process
+        let outPipe = self.stdoutPipe
+        let errPipe = self.stderrPipe
+
+        self.process = nil
+        self.stdoutPipe = nil
+        self.stderrPipe = nil
+        self.isRunning = false
+
+        stopLock.unlock()
+
+        guard let proc else { return }
+
+        // 先关闭管道读端，让 FFmpeg 写操作收到 SIGPIPE，
+        // 避免 waitUntilExit 因管道缓冲区满而死锁
+        try? outPipe?.fileHandleForReading.close()
+        try? errPipe?.fileHandleForReading.close()
+
+        if proc.isRunning {
+            proc.terminate()
+        }
+        proc.waitUntilExit()
     }
 
     deinit {
