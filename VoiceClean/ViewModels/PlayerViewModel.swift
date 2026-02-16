@@ -464,8 +464,10 @@ final class PlayerViewModel {
                     }
 
                     // 检测是否真正播放完毕：
-                    // 所有数据已读取 且 playerNode 已停止播放（所有 buffer 消耗完毕）
-                    if self.allDataRead && !player.isPlaying {
+                    // 所有数据已读取 且 所有已调度的 buffer 均已消耗完毕
+                    // 注意：不能用 playerNode.isPlaying，它只反映 play/stop 状态，
+                    // 即使所有 buffer 都播完了，isPlaying 仍然为 true。
+                    if self.allDataRead && player.bufferedDuration <= 0 {
                         self.onPlaybackFinished()
                     }
                 }
