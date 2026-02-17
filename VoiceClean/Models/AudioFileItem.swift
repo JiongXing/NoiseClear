@@ -6,6 +6,11 @@
 //
 
 import Foundation
+import UniformTypeIdentifiers
+#if os(iOS)
+import CoreTransferable
+import PhotosUI
+#endif
 
 // MARK: - 处理状态
 
@@ -131,3 +136,30 @@ struct AudioFileItem: Identifiable {
         return String(format: "%d:%02d", minutes, seconds)
     }
 }
+
+// MARK: - 相册视频 Transferable 类型
+
+#if os(iOS)
+/// 用于从相册导入视频文件的 Transferable 包装
+///
+/// 使用 `FileRepresentation` 确保大视频直接流式写入磁盘临时文件，
+/// 而非将整个视频加载到内存，避免内存暴涨导致进程被系统终止。
+struct TransferableMovie: Transferable {
+    let url: URL
+
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(contentType: .movie) { movie in
+            SentTransferredFile(movie.url)
+        } importing: { received in
+            let ext = received.file.pathExtension.isEmpty ? "mp4" : received.file.pathExtension
+            let fileName = "vc_album_\(UUID().uuidString).\(ext)"
+            let dest = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+            if FileManager.default.fileExists(atPath: dest.path) {
+                try FileManager.default.removeItem(at: dest)
+            }
+            try FileManager.default.copyItem(at: received.file, to: dest)
+            return Self(url: dest)
+        }
+    }
+}
+#endif

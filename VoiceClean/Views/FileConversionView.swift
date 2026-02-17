@@ -7,6 +7,9 @@
 
 import SwiftUI
 import UniformTypeIdentifiers
+#if os(iOS)
+import PhotosUI
+#endif
 
 // MARK: - 文件转换页面
 
@@ -14,6 +17,14 @@ import UniformTypeIdentifiers
 struct FileConversionView: View {
 
     @State private var viewModel = AudioViewModel()
+
+    #if os(iOS)
+    /// 是否显示文件来源选择对话框
+    @State private var showSourceDialog = false
+
+    /// 相册选择器选中的项目
+    @State private var selectedPhotoItems: [PhotosPickerItem] = []
+    #endif
 
     var body: some View {
         VStack(spacing: 0) {
@@ -26,7 +37,11 @@ struct FileConversionView: View {
                             Task { await viewModel.addFiles(from: urls) }
                         },
                         onTap: {
+                            #if os(macOS)
                             Task { await viewModel.addFiles() }
+                            #else
+                            showSourceDialog = true
+                            #endif
                         }
                     )
 
@@ -96,6 +111,47 @@ struct FileConversionView: View {
             case .failure(let error):
                 viewModel.errorMessage = error.localizedDescription
                 viewModel.showError = true
+            }
+        }
+        .confirmationDialog("选择文件来源", isPresented: $showSourceDialog) {
+            Button("从文件选取") {
+                viewModel.showFilePicker = true
+            }
+            Button("从相册选取视频") {
+                viewModel.showPhotoPicker = true
+            }
+            Button("取消", role: .cancel) {}
+        }
+        .photosPicker(
+            isPresented: $viewModel.showPhotoPicker,
+            selection: $selectedPhotoItems,
+            matching: .videos
+        )
+        .onChange(of: selectedPhotoItems) { _, newItems in
+            guard !newItems.isEmpty else { return }
+            Task {
+                viewModel.isImporting = true
+                defer { viewModel.isImporting = false }
+                var importedURLs: [URL] = []
+                for item in newItems {
+                    do {
+                        if let movie = try await item.loadTransferable(type: TransferableMovie.self) {
+                            importedURLs.append(movie.url)
+                        }
+                    } catch {
+                        viewModel.errorMessage = "从相册导入失败: \(error.localizedDescription)"
+                        viewModel.showError = true
+                    }
+                }
+                if !importedURLs.isEmpty {
+                    await viewModel.addFiles(from: importedURLs)
+                }
+                selectedPhotoItems = []
+            }
+        }
+        .overlay {
+            if viewModel.isImporting {
+                importingOverlay
             }
         }
         #endif
@@ -265,6 +321,39 @@ struct FileConversionView: View {
             }
         }
     }
+
+    // MARK: - 导入中遮罩
+
+    #if os(iOS)
+    /// 从相册导入时的 loading 遮罩
+    private var importingOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.3)
+                .ignoresSafeArea()
+
+            VStack(spacing: 16) {
+                ProgressView()
+                    .controlSize(.large)
+                    .tint(.white)
+
+                Text("正在从相册导入...")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+
+                Text("大文件可能需要较长时间")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+            .padding(32)
+            .background {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(.ultraThinMaterial)
+                    .environment(\.colorScheme, .dark)
+            }
+        }
+        .allowsHitTesting(true)
+    }
+    #endif
 }
 
 #Preview {

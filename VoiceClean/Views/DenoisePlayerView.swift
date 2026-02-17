@@ -7,6 +7,9 @@
 
 import SwiftUI
 import UniformTypeIdentifiers
+#if os(iOS)
+import PhotosUI
+#endif
 
 // MARK: - 降噪播放页面
 
@@ -20,6 +23,14 @@ struct DenoisePlayerView: View {
 
     /// 拖拽中的进度值
     @State private var seekProgress: Double = 0
+
+    #if os(iOS)
+    /// 是否显示文件来源选择对话框
+    @State private var showSourceDialog = false
+
+    /// 相册选择器选中的项目
+    @State private var selectedPhotoItems: [PhotosPickerItem] = []
+    #endif
 
     var body: some View {
         ScrollView {
@@ -72,6 +83,45 @@ struct DenoisePlayerView: View {
                 viewModel.showError = true
             }
         }
+        .confirmationDialog("选择文件来源", isPresented: $showSourceDialog) {
+            Button("从文件选取") {
+                viewModel.showFilePicker = true
+            }
+            Button("从相册选取视频") {
+                viewModel.showPhotoPicker = true
+            }
+            Button("取消", role: .cancel) {}
+        }
+        .photosPicker(
+            isPresented: $viewModel.showPhotoPicker,
+            selection: $selectedPhotoItems,
+            maxSelectionCount: 1,
+            matching: .videos
+        )
+        .onChange(of: selectedPhotoItems) { _, newItems in
+            guard let item = newItems.first else { return }
+            Task {
+                viewModel.isImporting = true
+                defer { viewModel.isImporting = false }
+                do {
+                    if let movie = try await item.loadTransferable(type: TransferableMovie.self) {
+                        await viewModel.loadFile(url: movie.url)
+                    } else {
+                        viewModel.errorMessage = "无法读取所选视频"
+                        viewModel.showError = true
+                    }
+                } catch {
+                    viewModel.errorMessage = "从相册导入失败: \(error.localizedDescription)"
+                    viewModel.showError = true
+                }
+                selectedPhotoItems = []
+            }
+        }
+        .overlay {
+            if viewModel.isImporting {
+                importingOverlay
+            }
+        }
         #endif
         .alert("错误", isPresented: $viewModel.showError) {
             Button("确定", role: .cancel) {}
@@ -112,7 +162,11 @@ struct DenoisePlayerView: View {
                         }
                     },
                     onTap: {
+                        #if os(macOS)
                         Task { await viewModel.selectFile() }
+                        #else
+                        showSourceDialog = true
+                        #endif
                     }
                 )
 
@@ -170,7 +224,11 @@ struct DenoisePlayerView: View {
                 // 更换文件按钮
                 if !viewModel.isPlaying {
                     Button {
+                        #if os(macOS)
                         Task { await viewModel.selectFile() }
+                        #else
+                        showSourceDialog = true
+                        #endif
                     } label: {
                         Label("更换文件", systemImage: "arrow.triangle.2.circlepath")
                             .font(.caption)
@@ -489,6 +547,39 @@ struct DenoisePlayerView: View {
             return "speaker.wave.3.fill"
         }
     }
+
+    // MARK: - 导入中遮罩
+
+    #if os(iOS)
+    /// 从相册导入时的 loading 遮罩
+    private var importingOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.3)
+                .ignoresSafeArea()
+
+            VStack(spacing: 16) {
+                ProgressView()
+                    .controlSize(.large)
+                    .tint(.white)
+
+                Text("正在从相册导入...")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+
+                Text("大文件可能需要较长时间")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+            .padding(32)
+            .background {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(.ultraThinMaterial)
+                    .environment(\.colorScheme, .dark)
+            }
+        }
+        .allowsHitTesting(true)
+    }
+    #endif
 }
 
 // MARK: - PlayerViewModel 辅助扩展

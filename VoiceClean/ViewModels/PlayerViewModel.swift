@@ -79,6 +79,12 @@ final class PlayerViewModel {
     #if os(iOS)
     /// 是否展示文件选择器
     var showFilePicker: Bool = false
+
+    /// 是否展示相册选择器
+    var showPhotoPicker: Bool = false
+
+    /// 是否正在从相册导入文件
+    var isImporting: Bool = false
     #endif
 
     // MARK: - 视频播放器（供 VideoPlayerView 使用）

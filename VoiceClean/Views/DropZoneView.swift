@@ -69,6 +69,10 @@ struct DropZoneView: View {
                     Text("点击选择音频/视频文件")
                         .font(.headline)
                         .foregroundStyle(.primary)
+
+                    Text("支持从文件或相册导入")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                     #endif
 
                     Text("支持 MP3、M4A、WAV、AAC、FLAC、MP4、MOV 格式")

@@ -45,6 +45,12 @@ final class AudioViewModel {
 
     /// 待导出的文件（用于 .fileExporter）
     var pendingExportFile: AudioFileItem?
+
+    /// 是否展示相册选择器
+    var showPhotoPicker: Bool = false
+
+    /// 是否正在从相册导入文件
+    var isImporting: Bool = false
     #endif
 
     // MARK: - 计算属性
