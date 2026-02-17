@@ -65,6 +65,8 @@ struct AudioFileRow: View {
     var onRemove: () -> Void
     var onExport: () -> Void
 
+    @State private var showRemoveConfirmation = false
+
     #if os(macOS)
     @State private var isHovered = false
     #endif
@@ -103,12 +105,15 @@ struct AudioFileRow: View {
                     .tint(.accentColor)
             }
 
-            // 操作按钮
-            HStack(spacing: 4) {
+            // 操作按钮 — 增大间距与点击区域，防止误触
+            HStack(spacing: 8) {
                 if file.status.isCompleted {
                     Button(action: onExport) {
                         Image(systemName: "square.and.arrow.up")
-                            .font(.system(size: 13))
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(Color.accentColor)
+                            .frame(width: 36, height: 36)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.borderless)
                     #if os(macOS)
@@ -117,10 +122,14 @@ struct AudioFileRow: View {
                 }
 
                 if !file.status.isProcessing {
-                    Button(action: onRemove) {
-                        Image(systemName: "xmark.circle.fill")
+                    Button {
+                        showRemoveConfirmation = true
+                    } label: {
+                        Image(systemName: "trash")
                             .font(.system(size: 13))
                             .foregroundStyle(.secondary)
+                            .frame(width: 36, height: 36)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.borderless)
                     #if os(macOS)
@@ -131,7 +140,7 @@ struct AudioFileRow: View {
             }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.vertical, 4)
         .background {
             RoundedRectangle(cornerRadius: 8)
                 #if os(macOS)
@@ -145,6 +154,38 @@ struct AudioFileRow: View {
                 RoundedRectangle(cornerRadius: 8)
                     .strokeBorder(Color.accentColor.opacity(0.3), lineWidth: 1)
             }
+        }
+        // 上下文菜单：右键(macOS) / 长按(iOS) 提供操作入口
+        .contextMenu {
+            if file.status.isCompleted {
+                Button {
+                    onExport()
+                } label: {
+                    Label("导出文件", systemImage: "square.and.arrow.up")
+                }
+            }
+
+            if !file.status.isProcessing {
+                Divider()
+                Button(role: .destructive) {
+                    onRemove()
+                } label: {
+                    Label("移除文件", systemImage: "trash")
+                }
+            }
+        }
+        // 删除确认弹窗，防止误触
+        .confirmationDialog(
+            "确认移除",
+            isPresented: $showRemoveConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("移除", role: .destructive) {
+                onRemove()
+            }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("确定要移除「\(file.fileName)」吗？")
         }
         #if os(macOS)
         .onHover { hovering in
