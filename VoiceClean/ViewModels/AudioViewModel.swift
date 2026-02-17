@@ -221,7 +221,7 @@ final class AudioViewModel {
 
     // MARK: - 私有方法
 
-    /// 处理指定索引的文件（使用 FFmpeg arnndn 降噪）
+    /// 处理指定索引的文件（使用 RNNoise 降噪）
     ///
     /// 音频文件：直接降噪输出 WAV
     /// 视频文件：复制视频流 + 降噪音频轨道，输出原格式（MP4/MOV）
@@ -252,10 +252,10 @@ final class AudioViewModel {
             let result: (waveform: [Float], tempURL: URL) = try await withCheckedThrowingContinuation { continuation in
                 DispatchQueue.global(qos: .userInitiated).async {
                     do {
-                        // 初始化 FFmpeg 降噪引擎
-                        let denoiser = try FFmpegDenoiser(strength: strength)
+                        // 初始化降噪引擎
+                        let denoiser = FFmpegDenoiser(strength: strength)
 
-                        // 执行 FFmpeg 降噪（根据文件类型选择不同处理策略）
+                        // 执行 RNNoise 降噪（根据文件类型选择不同处理策略）
                         try denoiser.process(
                             inputURL: inputURL,
                             outputURL: outputURL,

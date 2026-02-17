@@ -21,7 +21,7 @@ enum AudioFileService {
 
     // MARK: - 常量
 
-    /// 标准化输出采样率（与 FFmpeg 降噪输出保持一致）
+    /// 标准化输出采样率（与降噪输出保持一致）
     static let targetSampleRate: Double = 16000.0
 
     /// 波形可视化的采样点数量
@@ -91,12 +91,12 @@ enum AudioFileService {
 
     /// 读取音频/视频文件并转换为 16kHz 单声道 Float32 PCM 数据
     ///
-    /// 对于视频文件，会先通过 FFmpeg 提取音频轨道再加载。
+    /// 对于视频文件，会先通过 AVFoundation 提取音频轨道再加载。
     static func loadAndResample(url: URL) throws -> [Float] {
         let ext = url.pathExtension.lowercased()
 
         if kVideoExtensions.contains(ext) {
-            // 视频文件：先用 FFmpeg 提取音频到临时 WAV，再加载
+            // 视频文件：先用 AVFoundation 提取音频到临时 WAV，再加载
             let tempAudioURL = FileManager.default.temporaryDirectory
                 .appendingPathComponent("vc_extract_\(UUID().uuidString).wav")
             defer { try? FileManager.default.removeItem(at: tempAudioURL) }
@@ -179,20 +179,13 @@ enum AudioFileService {
     // MARK: - 视频音频提取
 
     /// 从视频文件中提取音频轨道为 16kHz 单声道 WAV
+    ///
+    /// 使用 AVAssetReader 解码音频轨道，输出为 16kHz 单声道 Float32 PCM WAV。
+    ///
     /// - Parameters:
     ///   - videoURL: 视频文件 URL
     ///   - audioURL: 输出 WAV 文件 URL
     static func extractAudioFromVideo(from videoURL: URL, to audioURL: URL) throws {
-        #if os(macOS)
-        try extractAudioFromVideoWithProcess(from: videoURL, to: audioURL)
-        #else
-        try extractAudioFromVideoWithAVFoundation(from: videoURL, to: audioURL)
-        #endif
-    }
-
-    #if os(iOS)
-    /// iOS: 使用 AVAssetReader 从视频文件提取音频为 16kHz 单声道 WAV
-    private static func extractAudioFromVideoWithAVFoundation(from videoURL: URL, to audioURL: URL) throws {
         let asset = AVURLAsset(url: videoURL)
         guard let audioTrack = asset.tracks(withMediaType: .audio).first else {
             throw AudioFileServiceError.audioExtractionFailed("视频文件中未找到音频轨道")
@@ -270,47 +263,6 @@ enum AudioFileService {
             throw AudioFileServiceError.audioExtractionFailed("输出文件不存在")
         }
     }
-    #endif
-
-    #if os(macOS)
-    /// macOS: 使用 FFmpeg Process 从视频提取音频
-    private static func extractAudioFromVideoWithProcess(from videoURL: URL, to audioURL: URL) throws {
-        guard let ffmpegPath = Bundle.main.path(forResource: "ffmpeg", ofType: nil) else {
-            throw AudioFileServiceError.ffmpegNotFound
-        }
-
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: ffmpegPath)
-        process.arguments = [
-            "-y",                       // 覆盖输出
-            "-i", videoURL.path,        // 输入视频
-            "-vn",                      // 去掉视频流
-            "-ar", "16000",             // 16kHz 采样率
-            "-ac", "1",                 // 单声道
-            "-c:a", "pcm_f32le",        // Float32 PCM
-            "-f", "wav",                // 输出 WAV
-            "-loglevel", "error",
-            audioURL.path
-        ]
-
-        let stderrPipe = Pipe()
-        process.standardError = stderrPipe
-        process.standardOutput = FileHandle.nullDevice
-
-        try process.run()
-        process.waitUntilExit()
-
-        guard process.terminationStatus == 0 else {
-            let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
-            let errorMsg = String(data: stderrData, encoding: .utf8) ?? "未知错误"
-            throw AudioFileServiceError.audioExtractionFailed(errorMsg)
-        }
-
-        guard FileManager.default.fileExists(atPath: audioURL.path) else {
-            throw AudioFileServiceError.audioExtractionFailed("输出文件不存在")
-        }
-    }
-    #endif
 
     // MARK: - 便捷方法
 
@@ -466,9 +418,6 @@ enum AudioFileServiceError: LocalizedError {
     case converterCreationFailed
     case conversionFailed(String)
     case fileNotFound(String)
-    #if os(macOS)
-    case ffmpegNotFound
-    #endif
     case audioExtractionFailed(String)
     case invalidDuration
 
@@ -484,10 +433,6 @@ enum AudioFileServiceError: LocalizedError {
             return "音频转换失败: \(msg)"
         case .fileNotFound(let path):
             return "找不到文件: \(path)"
-        #if os(macOS)
-        case .ffmpegNotFound:
-            return "找不到 FFmpeg 可执行文件"
-        #endif
         case .audioExtractionFailed(let msg):
             return "从视频提取音频失败: \(msg)"
         case .invalidDuration:

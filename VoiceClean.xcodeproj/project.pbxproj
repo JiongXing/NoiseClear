@@ -6,9 +6,6 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXBuildFile section */
-/* End PBXBuildFile section */
-
 /* Begin PBXFileReference section */
 		966DFB4F2F3DBC3100A90038 /* VoiceClean.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VoiceClean.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -262,18 +259,12 @@
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readwrite;
-				"EXCLUDED_SOURCE_FILE_NAMES[sdk=iphoneos*]" = ffmpeg;
-				"EXCLUDED_SOURCE_FILE_NAMES[sdk=iphonesimulator*]" = ffmpeg;
+				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SRCROOT)/VoiceClean/Libraries/RNNoise/src",
 					"$(SRCROOT)/VoiceClean/Libraries/RNNoise/include",
 				);
-				SWIFT_INCLUDE_PATHS = (
-					"$(inherited)",
-					"$(SRCROOT)/VoiceClean/Libraries/RNNoise/include",
-				);
-				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -300,6 +291,7 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_INCLUDE_PATHS = "$(inherited) $(SRCROOT)/VoiceClean/Libraries/RNNoise/include";
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -318,18 +310,12 @@
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readwrite;
-				"EXCLUDED_SOURCE_FILE_NAMES[sdk=iphoneos*]" = ffmpeg;
-				"EXCLUDED_SOURCE_FILE_NAMES[sdk=iphonesimulator*]" = ffmpeg;
+				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SRCROOT)/VoiceClean/Libraries/RNNoise/src",
 					"$(SRCROOT)/VoiceClean/Libraries/RNNoise/include",
 				);
-				SWIFT_INCLUDE_PATHS = (
-					"$(inherited)",
-					"$(SRCROOT)/VoiceClean/Libraries/RNNoise/include",
-				);
-				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -356,6 +342,7 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_INCLUDE_PATHS = "$(inherited) $(SRCROOT)/VoiceClean/Libraries/RNNoise/include";
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -384,8 +371,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
-	
 	};
 	rootObject = 966DFB472F3DBC3100A90038 /* Project object */;
 }

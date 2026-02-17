@@ -15,8 +15,8 @@ import Observation
 ///
 /// 工作流程:
 /// 1. 用户导入文件 → `loadFile(url:)` 获取时长等元数据
-/// 2. 用户点击播放 → `play()` 启动 FFmpeg 管道 + AVAudioEngine
-/// 3. 后台线程持续从 FFmpeg stdout pipe 读取 PCM 数据并调度到 AudioEngine
+/// 2. 用户点击播放 → `play()` 启动 RNNoise 降噪引擎 + AVAudioEngine
+/// 3. 后台线程持续从内存缓冲读取 PCM 数据并调度到 AudioEngine
 /// 4. 定时器更新当前播放时间
 /// 5. 视频文件额外使用 AVPlayer 显示画面（静音）
 @Observable
@@ -115,7 +115,7 @@ final class PlayerViewModel {
     /// 是否已获取安全作用域访问权限（iOS 文件选择器返回的 URL 需要）
     private var hasSecurityScopedAccess: Bool = false
 
-    /// 标记 FFmpeg 数据已全部读取完毕（但音频可能仍在播放）
+    /// 标记降噪数据已全部读取完毕（但音频可能仍在播放）
     private var allDataRead: Bool = false
 
     /// 每次按小段预降噪的时长（秒）
@@ -253,7 +253,7 @@ final class PlayerViewModel {
                     DispatchQueue.global(qos: .userInitiated).async {
                         do {
                             // 创建并启动首个降噪 chunk
-                            let denoiser = try StreamingDenoiser()
+                            let denoiser = StreamingDenoiser()
                             let initialDur = min(capturedChunkDur, max(0, capturedDuration - capturedStartTime))
                             if capturedDenoiseEnabled {
                                 try denoiser.start(
@@ -289,7 +289,7 @@ final class PlayerViewModel {
                                 guard remaining > 0.01 else { break }
 
                                 let chunkDur = min(capturedChunkDur, remaining)
-                                let nextDenoiser = try StreamingDenoiser()
+                                let nextDenoiser = StreamingDenoiser()
                                 if capturedDenoiseEnabled {
                                     try nextDenoiser.start(
                                         inputURL: fileURL, strength: capturedStrength,
@@ -499,7 +499,7 @@ final class PlayerViewModel {
 
                 let nextDuration = min(self.chunkDuration, remaining)
                 do {
-                    let nextDenoiser = try StreamingDenoiser()
+                    let nextDenoiser = StreamingDenoiser()
                     try self.startDenoiserChunk(
                         denoiser: nextDenoiser,
                         fileURL: fileURL,

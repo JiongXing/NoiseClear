@@ -47,7 +47,7 @@ final class RNNoiseProcessor {
     /// 使用内置默认模型初始化
     ///
     /// 新版 xiph/rnnoise 使用编译进二进制的默认模型（rnnoise_data.c），
-    /// 旧的 std.rnnn 文件（FFmpeg arnndn 格式）与新版不兼容，不再加载。
+    /// 旧的 std.rnnn 外部模型文件已不再需要。
     convenience init() throws {
         try self.init(modelPath: nil)
     }
