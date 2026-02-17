@@ -1,0 +1,4 @@
+module RNNoise {
+    header "rnnoise.h"
+    export *
+}

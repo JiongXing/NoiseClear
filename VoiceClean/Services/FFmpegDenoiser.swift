@@ -5,6 +5,7 @@
 //  Created by jxing on 2026/2/14.
 //
 
+import AVFoundation
 import Foundation
 
 // MARK: - FFmpeg 降噪引擎
@@ -15,7 +16,7 @@ import Foundation
 /// 专门针对人声进行降噪，能有效去除背景噪声同时保留语音质量。
 ///
 /// - macOS: 通过 Process 启动 FFmpeg 二进制（性能好，支持 pipe 流式输出）
-/// - iOS: 通过 FFmpegLibDenoiser 直接调用 FFmpeg C API（Libavfilter）
+/// - iOS: 通过 AVFoundation 解码 + RNNoise 降噪（原生方案，不依赖 FFmpeg）
 final class FFmpegDenoiser: Sendable {
 
     // MARK: - 常量
@@ -65,10 +66,7 @@ final class FFmpegDenoiser: Sendable {
             )
         }
         #else
-        // iOS: 通过 FFmpegLibDenoiser 使用 C API，仅需验证模型文件存在
-        guard Bundle.main.path(forResource: "std", ofType: "rnnn") != nil else {
-            throw FFmpegDenoiserError.modelNotFound
-        }
+        // iOS: 使用原生 AVFoundation + RNNoise，模型由 RNNoiseProcessor 内部加载
         #endif
     }
 
@@ -107,7 +105,7 @@ final class FFmpegDenoiser: Sendable {
         #endif
     }
 
-    // MARK: - iOS: 使用 FFmpeg C API
+    // MARK: - iOS: 使用 AVFoundation + RNNoise
 
     #if os(iOS)
     private func processWithFFmpegLib(
@@ -118,20 +116,16 @@ final class FFmpegDenoiser: Sendable {
         onProgress: @escaping @Sendable (Double) -> Void
     ) throws {
         if isVideo {
-            try FFmpegLibDenoiser.denoiseVideo(
+            try denoiseVideoNative(
                 inputURL: inputURL,
                 outputURL: outputURL,
-                strength: denoiseStrength,
                 duration: duration,
                 onProgress: onProgress
             )
         } else {
-            try FFmpegLibDenoiser.denoiseAudio(
+            try denoiseAudioNative(
                 inputURL: inputURL,
                 outputURL: outputURL,
-                strength: denoiseStrength,
-                sampleRate: Int32(Self.outputSampleRate),
-                channels: 1,
                 duration: duration,
                 onProgress: onProgress
             )
@@ -141,6 +135,264 @@ final class FFmpegDenoiser: Sendable {
         guard FileManager.default.fileExists(atPath: outputURL.path) else {
             throw FFmpegDenoiserError.outputFileMissing
         }
+    }
+
+    /// 使用 AVFoundation + RNNoise 对纯音频文件降噪
+    private func denoiseAudioNative(
+        inputURL: URL,
+        outputURL: URL,
+        duration: TimeInterval,
+        onProgress: @escaping @Sendable (Double) -> Void
+    ) throws {
+        // 1. 读取源文件并转换为 48kHz 单声道（RNNoise 要求）
+        let sourceFile = try AVAudioFile(forReading: inputURL)
+        let sourceFormat = sourceFile.processingFormat
+        let sourceFrameCount = AVAudioFrameCount(sourceFile.length)
+
+        guard let sourceBuffer = AVAudioPCMBuffer(pcmFormat: sourceFormat, frameCapacity: sourceFrameCount) else {
+            throw FFmpegDenoiserError.outputFileMissing
+        }
+        try sourceFile.read(into: sourceBuffer)
+        onProgress(0.1)
+
+        // 目标：48kHz 单声道
+        let monoFormat = AVAudioFormat(
+            commonFormat: .pcmFormatFloat32,
+            sampleRate: RNNoiseProcessor.sampleRate,
+            channels: 1,
+            interleaved: false
+        )!
+
+        guard let converter = AVAudioConverter(from: sourceFormat, to: monoFormat) else {
+            throw FFmpegDenoiserError.outputFileMissing
+        }
+
+        let ratio = RNNoiseProcessor.sampleRate / sourceFormat.sampleRate
+        let outCapacity = AVAudioFrameCount(Double(sourceFrameCount) * ratio) + 256
+        guard let monoBuffer = AVAudioPCMBuffer(pcmFormat: monoFormat, frameCapacity: outCapacity) else {
+            throw FFmpegDenoiserError.outputFileMissing
+        }
+
+        var isDone = false
+        var convError: NSError?
+        converter.convert(to: monoBuffer, error: &convError) { _, outStatus in
+            if isDone {
+                outStatus.pointee = .noDataNow
+                return nil
+            }
+            isDone = true
+            outStatus.pointee = .haveData
+            return sourceBuffer
+        }
+        if let convError { throw FFmpegDenoiserError.processingFailed(convError.localizedDescription) }
+        onProgress(0.3)
+
+        // 2. RNNoise 逐帧降噪
+        guard let monoData = monoBuffer.floatChannelData?[0] else {
+            throw FFmpegDenoiserError.outputFileMissing
+        }
+        let sampleCount = Int(monoBuffer.frameLength)
+        let processor = try RNNoiseProcessor()
+        defer { processor.close() }
+
+        let frameSize = RNNoiseProcessor.frameSize
+        let scaleFactor: Float = 32768.0
+        let invScaleFactor: Float = 1.0 / 32768.0
+        var denoisedSamples = [Float](repeating: 0, count: sampleCount)
+        let strength = denoiseStrength
+        var offset = 0
+
+        while offset < sampleCount {
+            let remaining = sampleCount - offset
+            let currentSize = min(frameSize, remaining)
+
+            var inputFrame = [Float](repeating: 0, count: frameSize)
+            for i in 0..<currentSize {
+                inputFrame[i] = monoData[offset + i] * scaleFactor
+            }
+
+            var outputFrame = [Float](repeating: 0, count: frameSize)
+            processor.processFrame(output: &outputFrame, input: &inputFrame)
+
+            for i in 0..<currentSize {
+                let denoised = outputFrame[i] * invScaleFactor
+                if strength >= 1.0 {
+                    denoisedSamples[offset + i] = denoised
+                } else {
+                    denoisedSamples[offset + i] = monoData[offset + i] * (1.0 - strength) + denoised * strength
+                }
+            }
+
+            offset += frameSize
+
+            // 进度：0.3 ~ 0.9 之间
+            let denoiseProgress = Double(offset) / Double(sampleCount)
+            onProgress(0.3 + denoiseProgress * 0.6)
+        }
+
+        // 3. 降采样到输出采样率（16kHz）并写入
+        let denoisedFormat = monoFormat
+        guard let denoisedBuffer = AVAudioPCMBuffer(pcmFormat: denoisedFormat, frameCapacity: AVAudioFrameCount(sampleCount)) else {
+            throw FFmpegDenoiserError.outputFileMissing
+        }
+        denoisedBuffer.frameLength = AVAudioFrameCount(sampleCount)
+        denoisedSamples.withUnsafeBufferPointer { src in
+            denoisedBuffer.floatChannelData![0].update(from: src.baseAddress!, count: sampleCount)
+        }
+
+        // 输出格式：16kHz 单声道
+        let outputFormat = AVAudioFormat(
+            commonFormat: .pcmFormatFloat32,
+            sampleRate: Self.outputSampleRate,
+            channels: 1,
+            interleaved: false
+        )!
+
+        guard let outConverter = AVAudioConverter(from: denoisedFormat, to: outputFormat) else {
+            throw FFmpegDenoiserError.outputFileMissing
+        }
+
+        let outRatio = Self.outputSampleRate / RNNoiseProcessor.sampleRate
+        let finalCapacity = AVAudioFrameCount(Double(sampleCount) * outRatio) + 256
+        guard let finalBuffer = AVAudioPCMBuffer(pcmFormat: outputFormat, frameCapacity: finalCapacity) else {
+            throw FFmpegDenoiserError.outputFileMissing
+        }
+
+        var outDone = false
+        var outConvError: NSError?
+        outConverter.convert(to: finalBuffer, error: &outConvError) { _, outStatus in
+            if outDone {
+                outStatus.pointee = .noDataNow
+                return nil
+            }
+            outDone = true
+            outStatus.pointee = .haveData
+            return denoisedBuffer
+        }
+        if let outConvError { throw FFmpegDenoiserError.processingFailed(outConvError.localizedDescription) }
+
+        let outputFile = try AVAudioFile(forWriting: outputURL, settings: outputFormat.settings)
+        try outputFile.write(from: finalBuffer)
+
+        onProgress(1.0)
+    }
+
+    /// 使用 AVFoundation + RNNoise 对视频文件的音频轨道降噪
+    ///
+    /// 注意：iOS 原生无法像 FFmpeg 那样只替换音频轨道后重新封装视频。
+    /// 此方法仅提取并降噪音频轨道，输出为 WAV 文件。
+    /// 实际效果等价于提取音频 + 降噪。
+    private func denoiseVideoNative(
+        inputURL: URL,
+        outputURL: URL,
+        duration: TimeInterval,
+        onProgress: @escaping @Sendable (Double) -> Void
+    ) throws {
+        let asset = AVURLAsset(url: inputURL)
+        guard let audioTrack = asset.tracks(withMediaType: .audio).first else {
+            throw FFmpegDenoiserError.processingFailed("视频文件中未找到音频轨道")
+        }
+
+        let reader = try AVAssetReader(asset: asset)
+
+        // 输出 48kHz 单声道给 RNNoise
+        let readerSettings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVSampleRateKey: RNNoiseProcessor.sampleRate,
+            AVNumberOfChannelsKey: 1,
+            AVLinearPCMBitDepthKey: 32,
+            AVLinearPCMIsFloatKey: true,
+            AVLinearPCMIsBigEndianKey: false,
+            AVLinearPCMIsNonInterleaved: false
+        ]
+
+        let trackOutput = AVAssetReaderTrackOutput(track: audioTrack, outputSettings: readerSettings)
+        trackOutput.alwaysCopiesSampleData = false
+        reader.add(trackOutput)
+        guard reader.startReading() else {
+            throw FFmpegDenoiserError.processingFailed(
+                reader.error?.localizedDescription ?? "AVAssetReader 启动失败"
+            )
+        }
+        onProgress(0.1)
+
+        // 收集所有样本
+        let monoFormat = AVAudioFormat(
+            commonFormat: .pcmFormatFloat32,
+            sampleRate: RNNoiseProcessor.sampleRate,
+            channels: 1,
+            interleaved: false
+        )!
+
+        var allSamples = [Float]()
+        while reader.status == .reading {
+            guard let sampleBuffer = trackOutput.copyNextSampleBuffer() else { break }
+            let numSamples = CMSampleBufferGetNumSamples(sampleBuffer)
+            guard numSamples > 0 else { continue }
+
+            guard let blockBuffer = CMSampleBufferGetDataBuffer(sampleBuffer) else { continue }
+            var totalLength = 0
+            var dataPointer: UnsafeMutablePointer<Int8>?
+            CMBlockBufferGetDataPointer(blockBuffer, atOffset: 0, lengthAtOffsetOut: nil,
+                                        totalLengthOut: &totalLength, dataPointerOut: &dataPointer)
+            guard let data = dataPointer else { continue }
+
+            let floatCount = totalLength / MemoryLayout<Float>.size
+            let floatPtr = UnsafeRawPointer(data).bindMemory(to: Float.self, capacity: floatCount)
+            allSamples.append(contentsOf: UnsafeBufferPointer(start: floatPtr, count: floatCount))
+        }
+        onProgress(0.3)
+
+        // RNNoise 降噪
+        let processor = try RNNoiseProcessor()
+        defer { processor.close() }
+        let denoisedSamples = processor.processAll(allSamples, strength: denoiseStrength)
+        onProgress(0.8)
+
+        // 降采样并写入输出文件
+        let sampleCount = denoisedSamples.count
+        guard let denoisedBuffer = AVAudioPCMBuffer(pcmFormat: monoFormat, frameCapacity: AVAudioFrameCount(sampleCount)) else {
+            throw FFmpegDenoiserError.outputFileMissing
+        }
+        denoisedBuffer.frameLength = AVAudioFrameCount(sampleCount)
+        denoisedSamples.withUnsafeBufferPointer { src in
+            denoisedBuffer.floatChannelData![0].update(from: src.baseAddress!, count: sampleCount)
+        }
+
+        let outputFormat = AVAudioFormat(
+            commonFormat: .pcmFormatFloat32,
+            sampleRate: Self.outputSampleRate,
+            channels: 1,
+            interleaved: false
+        )!
+
+        guard let outConverter = AVAudioConverter(from: monoFormat, to: outputFormat) else {
+            throw FFmpegDenoiserError.outputFileMissing
+        }
+
+        let outRatio = Self.outputSampleRate / RNNoiseProcessor.sampleRate
+        let finalCapacity = AVAudioFrameCount(Double(sampleCount) * outRatio) + 256
+        guard let finalBuffer = AVAudioPCMBuffer(pcmFormat: outputFormat, frameCapacity: finalCapacity) else {
+            throw FFmpegDenoiserError.outputFileMissing
+        }
+
+        var outDone = false
+        var outConvError: NSError?
+        outConverter.convert(to: finalBuffer, error: &outConvError) { _, outStatus in
+            if outDone {
+                outStatus.pointee = .noDataNow
+                return nil
+            }
+            outDone = true
+            outStatus.pointee = .haveData
+            return denoisedBuffer
+        }
+        if let outConvError { throw FFmpegDenoiserError.processingFailed(outConvError.localizedDescription) }
+
+        let outputFile = try AVAudioFile(forWriting: outputURL, settings: outputFormat.settings)
+        try outputFile.write(from: finalBuffer)
+
+        onProgress(1.0)
     }
     #endif
 
@@ -302,6 +554,7 @@ enum FFmpegDenoiserError: LocalizedError {
     #endif
     case modelNotFound
     case outputFileMissing
+    case processingFailed(String)
 
     var errorDescription: String? {
         switch self {
@@ -316,7 +569,9 @@ enum FFmpegDenoiserError: LocalizedError {
         case .modelNotFound:
             return "找不到 RNNoise 模型文件 (std.rnnn) — 请确保模型文件已添加到项目 Resources 中"
         case .outputFileMissing:
-            return "FFmpeg 处理完成但输出文件不存在"
+            return "处理完成但输出文件不存在"
+        case .processingFailed(let msg):
+            return "音频处理失败: \(msg)"
         }
     }
 }

@@ -13,7 +13,7 @@ import Foundation
 /// 基于 FFmpeg arnndn 滤镜的流式降噪引擎
 ///
 /// - macOS: 通过 FFmpeg Process 将 PCM 输出到 stdout pipe，实时读取播放
-/// - iOS: 通过 FFmpegLibDenoiser 将音频处理到临时 WAV 文件，再用 AVAudioFile 读取
+/// - iOS: 通过 AVFoundation 解码 + RNNoise 降噪，输出到临时 WAV 文件，再用 AVAudioFile 读取
 final class StreamingDenoiser {
 
     // MARK: - 常量
@@ -82,6 +82,14 @@ final class StreamingDenoiser {
 
     /// 用于读取临时 WAV 的 AVAudioFile
     private var audioFileReader: AVAudioFile?
+
+    /// RNNoise 处理要求的采样率（48kHz 单声道）
+    private static let rnnoiseMonoFormat: AVAudioFormat = AVAudioFormat(
+        commonFormat: .pcmFormatFloat32,
+        sampleRate: 48000.0,
+        channels: 1,
+        interleaved: false
+    )!
     #endif
 
     // MARK: - 初始化
@@ -104,9 +112,7 @@ final class StreamingDenoiser {
             try? fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: ffmpegPath)
         }
         #else
-        guard Bundle.main.path(forResource: "std", ofType: "rnnn") != nil else {
-            throw StreamingDenoiserError.modelNotFound
-        }
+        // iOS: RNNoise 模型由 RNNoiseProcessor 内部加载，此处无需额外检查
         #endif
     }
 
@@ -372,28 +378,15 @@ final class StreamingDenoiser {
             .appendingPathComponent("streaming_denoise_\(UUID().uuidString).wav")
         self.tempFileURL = tempURL
 
-        do {
-            // 尝试 FFmpeg 降噪（需要 arnndn/afftdn 滤镜和 wav 格式支持）
-            try FFmpegLibDenoiser.denoiseChunk(
-                inputURL: inputURL,
-                outputURL: tempURL,
-                strength: strength,
-                startTime: startTime,
-                maxDuration: maxDuration,
-                sampleRate: Int32(Self.sampleRate),
-                channels: Int32(Self.channels),
-                isVideo: isVideo
-            )
-        } catch {
-            // FFmpeg 不可用，回退到 AVFoundation（暂无降噪）
-            try convertChunkWithAVFoundation(
-                inputURL: inputURL,
-                outputURL: tempURL,
-                startTime: startTime,
-                maxDuration: maxDuration,
-                isVideo: isVideo
-            )
-        }
+        // 使用 AVFoundation 解码 + RNNoise 降噪
+        try convertAndDenoiseChunk(
+            inputURL: inputURL,
+            outputURL: tempURL,
+            startTime: startTime,
+            maxDuration: maxDuration,
+            isVideo: isVideo,
+            strength: strength
+        )
 
         self.audioFileReader = try AVAudioFile(forReading: tempURL)
         self.isRunning = true
@@ -409,37 +402,291 @@ final class StreamingDenoiser {
             .appendingPathComponent("streaming_original_\(UUID().uuidString).wav")
         self.tempFileURL = tempURL
 
-        do {
-            // 尝试 FFmpeg 格式转换
-            try FFmpegLibDenoiser.originalChunk(
-                inputURL: inputURL,
-                outputURL: tempURL,
-                startTime: startTime,
-                maxDuration: maxDuration,
-                sampleRate: Int32(Self.sampleRate),
-                channels: Int32(Self.channels),
-                isVideo: isVideo
-            )
-        } catch {
-            try convertChunkWithAVFoundation(
-                inputURL: inputURL,
-                outputURL: tempURL,
-                startTime: startTime,
-                maxDuration: maxDuration,
-                isVideo: isVideo
-            )
-        }
+        // 仅格式转换，不降噪
+        try convertChunkWithAVFoundation(
+            inputURL: inputURL,
+            outputURL: tempURL,
+            startTime: startTime,
+            maxDuration: maxDuration,
+            isVideo: isVideo
+        )
 
         self.audioFileReader = try AVAudioFile(forReading: tempURL)
         self.isRunning = true
     }
 
-    // MARK: - iOS: AVFoundation 回退方案
+    // MARK: - iOS: AVFoundation + RNNoise 降噪
 
-    /// 使用 AVFoundation 将音频/视频的音频轨道转换为目标格式 WAV 文件
+    /// 使用 AVFoundation 解码 + RNNoise 进行实时降噪
     ///
-    /// 当 FFmpegKit 构建不包含所需的音频滤镜或封装格式时，使用此方法作为回退。
-    /// 支持 MP3、AAC、WAV、AIFF、FLAC 等音频格式及视频文件。
+    /// 流程: 输入文件 → AVFoundation 解码 → 重采样至 48kHz 单声道 → RNNoise 降噪 → 还原为立体声 → 写入 WAV
+    private func convertAndDenoiseChunk(
+        inputURL: URL,
+        outputURL: URL,
+        startTime: TimeInterval,
+        maxDuration: TimeInterval?,
+        isVideo: Bool,
+        strength: Float
+    ) throws {
+        // 1. 先用 AVFoundation 解码为 48kHz 单声道（RNNoise 要求）
+        let monoTempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("rnnoise_mono_\(UUID().uuidString).wav")
+        defer { try? FileManager.default.removeItem(at: monoTempURL) }
+
+        if isVideo {
+            try convertVideoAudioToMono(
+                inputURL: inputURL,
+                outputURL: monoTempURL,
+                startTime: startTime,
+                maxDuration: maxDuration
+            )
+        } else {
+            try convertAudioToMono(
+                inputURL: inputURL,
+                outputURL: monoTempURL,
+                startTime: startTime,
+                maxDuration: maxDuration
+            )
+        }
+
+        // 2. 读取单声道 PCM 数据，应用 RNNoise 降噪
+        let monoFile = try AVAudioFile(forReading: monoTempURL)
+        let monoFrameCount = AVAudioFrameCount(monoFile.length)
+        guard monoFrameCount > 0 else {
+            throw StreamingDenoiserError.conversionFailed("解码后数据为空")
+        }
+
+        let monoFormat = monoFile.processingFormat
+        guard let monoBuffer = AVAudioPCMBuffer(pcmFormat: monoFormat, frameCapacity: monoFrameCount) else {
+            throw StreamingDenoiserError.conversionFailed("无法创建单声道缓冲区")
+        }
+        try monoFile.read(into: monoBuffer, frameCount: monoFrameCount)
+
+        guard let monoData = monoBuffer.floatChannelData?[0] else {
+            throw StreamingDenoiserError.conversionFailed("无法读取单声道数据")
+        }
+
+        let sampleCount = Int(monoBuffer.frameLength)
+        let processor = try RNNoiseProcessor()
+        defer { processor.close() }
+
+        let frameSize = RNNoiseProcessor.frameSize
+        let clampedStrength = max(0.0, min(1.0, strength))
+        let scaleFactor: Float = 32768.0
+        let invScaleFactor: Float = 1.0 / 32768.0
+
+        // 3. 逐帧降噪（RNNoise 期望 int16 范围的 float: -32768~32768）
+        var denoisedMono = [Float](repeating: 0, count: sampleCount)
+        var offset = 0
+        while offset < sampleCount {
+            let remaining = sampleCount - offset
+            let currentSize = min(frameSize, remaining)
+
+            var inputFrame = [Float](repeating: 0, count: frameSize)
+            for i in 0..<currentSize {
+                inputFrame[i] = monoData[offset + i] * scaleFactor
+            }
+
+            var outputFrame = [Float](repeating: 0, count: frameSize)
+            processor.processFrame(output: &outputFrame, input: &inputFrame)
+
+            // 混合原始和降噪信号（先将 RNNoise 输出缩放回 float 范围）
+            for i in 0..<currentSize {
+                let denoised = outputFrame[i] * invScaleFactor
+                if clampedStrength >= 1.0 {
+                    denoisedMono[offset + i] = denoised
+                } else {
+                    denoisedMono[offset + i] = monoData[offset + i] * (1.0 - clampedStrength) + denoised * clampedStrength
+                }
+            }
+
+            offset += frameSize
+        }
+
+        // 4. 单声道 → 双声道（复制到左右声道）
+        let stereoFormat = Self.outputFormat  // 非交错 Float32 48kHz 双声道
+        guard let stereoBuffer = AVAudioPCMBuffer(pcmFormat: stereoFormat, frameCapacity: AVAudioFrameCount(sampleCount)) else {
+            throw StreamingDenoiserError.conversionFailed("无法创建立体声缓冲区")
+        }
+        stereoBuffer.frameLength = AVAudioFrameCount(sampleCount)
+
+        if let stereoChannels = stereoBuffer.floatChannelData {
+            denoisedMono.withUnsafeBufferPointer { src in
+                // 复制到左声道
+                stereoChannels[0].update(from: src.baseAddress!, count: sampleCount)
+                // 复制到右声道
+                if Self.channels > 1 {
+                    stereoChannels[1].update(from: src.baseAddress!, count: sampleCount)
+                }
+            }
+        }
+
+        // 5. 写入输出 WAV
+        let outputFile = try AVAudioFile(
+            forWriting: outputURL,
+            settings: Self.wavFileSettings,
+            commonFormat: .pcmFormatFloat32,
+            interleaved: false
+        )
+        try outputFile.write(from: stereoBuffer)
+    }
+
+    /// 将纯音频文件转换为 48kHz 单声道
+    private func convertAudioToMono(
+        inputURL: URL,
+        outputURL: URL,
+        startTime: TimeInterval,
+        maxDuration: TimeInterval?
+    ) throws {
+        let inputFile = try AVAudioFile(forReading: inputURL)
+        let inputFormat = inputFile.processingFormat
+        let inputSR = inputFormat.sampleRate
+
+        let startFrame = AVAudioFramePosition(startTime * inputSR)
+        if startFrame > 0 && startFrame < inputFile.length {
+            inputFile.framePosition = startFrame
+        }
+
+        let remaining = AVAudioFrameCount(inputFile.length - inputFile.framePosition)
+        let maxFrames: AVAudioFrameCount
+        if let maxDur = maxDuration, maxDur > 0 {
+            maxFrames = min(AVAudioFrameCount(maxDur * inputSR), remaining)
+        } else {
+            maxFrames = remaining
+        }
+        guard maxFrames > 0 else {
+            throw StreamingDenoiserError.conversionFailed("无可读取的音频帧")
+        }
+
+        guard let inputBuffer = AVAudioPCMBuffer(pcmFormat: inputFormat, frameCapacity: maxFrames) else {
+            throw StreamingDenoiserError.conversionFailed("无法创建输入缓冲区")
+        }
+        try inputFile.read(into: inputBuffer, frameCount: maxFrames)
+
+        let monoFormat = Self.rnnoiseMonoFormat
+        guard let converter = AVAudioConverter(from: inputFormat, to: monoFormat) else {
+            throw StreamingDenoiserError.conversionFailed("无法创建格式转换器")
+        }
+
+        let ratio = RNNoiseProcessor.sampleRate / inputSR
+        let outCapacity = AVAudioFrameCount(Double(inputBuffer.frameLength) * ratio) + 256
+        guard let outputBuffer = AVAudioPCMBuffer(pcmFormat: monoFormat, frameCapacity: outCapacity) else {
+            throw StreamingDenoiserError.conversionFailed("无法创建输出缓冲区")
+        }
+
+        var isDone = false
+        var convError: NSError?
+        converter.convert(to: outputBuffer, error: &convError) { _, outStatus in
+            if isDone {
+                outStatus.pointee = .noDataNow
+                return nil
+            }
+            isDone = true
+            outStatus.pointee = .haveData
+            return inputBuffer
+        }
+        if let convError {
+            throw StreamingDenoiserError.conversionFailed(convError.localizedDescription)
+        }
+
+        let monoSettings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVSampleRateKey: RNNoiseProcessor.sampleRate,
+            AVNumberOfChannelsKey: 1,
+            AVLinearPCMBitDepthKey: 32,
+            AVLinearPCMIsFloatKey: true,
+            AVLinearPCMIsBigEndianKey: false,
+            AVLinearPCMIsNonInterleaved: false
+        ]
+        let outputFile = try AVAudioFile(
+            forWriting: outputURL,
+            settings: monoSettings,
+            commonFormat: .pcmFormatFloat32,
+            interleaved: false
+        )
+        try outputFile.write(from: outputBuffer)
+    }
+
+    /// 从视频文件提取音频并转换为 48kHz 单声道
+    private func convertVideoAudioToMono(
+        inputURL: URL,
+        outputURL: URL,
+        startTime: TimeInterval,
+        maxDuration: TimeInterval?
+    ) throws {
+        let asset = AVURLAsset(url: inputURL)
+        guard let audioTrack = asset.tracks(withMediaType: .audio).first else {
+            throw StreamingDenoiserError.conversionFailed("视频文件中未找到音频轨道")
+        }
+
+        let reader = try AVAssetReader(asset: asset)
+        let start = CMTime(seconds: startTime, preferredTimescale: 48000)
+        let dur = maxDuration.map { CMTime(seconds: $0, preferredTimescale: 48000) } ?? CMTime.positiveInfinity
+        reader.timeRange = CMTimeRange(start: start, duration: dur)
+
+        let readerSettings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVSampleRateKey: RNNoiseProcessor.sampleRate,
+            AVNumberOfChannelsKey: 1,
+            AVLinearPCMBitDepthKey: 32,
+            AVLinearPCMIsFloatKey: true,
+            AVLinearPCMIsBigEndianKey: false,
+            AVLinearPCMIsNonInterleaved: false
+        ]
+
+        let trackOutput = AVAssetReaderTrackOutput(track: audioTrack, outputSettings: readerSettings)
+        trackOutput.alwaysCopiesSampleData = false
+        reader.add(trackOutput)
+        guard reader.startReading() else {
+            throw StreamingDenoiserError.conversionFailed(
+                reader.error?.localizedDescription ?? "AVAssetReader 启动失败"
+            )
+        }
+
+        let monoFormat = Self.rnnoiseMonoFormat
+        let monoSettings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVSampleRateKey: RNNoiseProcessor.sampleRate,
+            AVNumberOfChannelsKey: 1,
+            AVLinearPCMBitDepthKey: 32,
+            AVLinearPCMIsFloatKey: true,
+            AVLinearPCMIsBigEndianKey: false,
+            AVLinearPCMIsNonInterleaved: false
+        ]
+
+        let outputFile = try AVAudioFile(
+            forWriting: outputURL,
+            settings: monoSettings,
+            commonFormat: .pcmFormatFloat32,
+            interleaved: false
+        )
+
+        while reader.status == .reading {
+            guard let sampleBuffer = trackOutput.copyNextSampleBuffer() else { break }
+            let numSamples = CMSampleBufferGetNumSamples(sampleBuffer)
+            guard numSamples > 0 else { continue }
+
+            guard let blockBuffer = CMSampleBufferGetDataBuffer(sampleBuffer) else { continue }
+            var totalLength = 0
+            var dataPointer: UnsafeMutablePointer<Int8>?
+            CMBlockBufferGetDataPointer(blockBuffer, atOffset: 0, lengthAtOffsetOut: nil,
+                                        totalLengthOut: &totalLength, dataPointerOut: &dataPointer)
+            guard let data = dataPointer else { continue }
+
+            let frameCount = AVAudioFrameCount(numSamples)
+            guard let buffer = AVAudioPCMBuffer(pcmFormat: monoFormat, frameCapacity: frameCount) else { continue }
+            buffer.frameLength = frameCount
+
+            let bytesToCopy = min(totalLength, Int(frameCount) * MemoryLayout<Float>.size)
+            memcpy(buffer.floatChannelData![0], data, bytesToCopy)
+
+            try outputFile.write(from: buffer)
+        }
+    }
+
+    // MARK: - iOS: AVFoundation 格式转换（无降噪）
+
+    /// 使用 AVFoundation 将音频/视频的音频轨道转换为目标格式 WAV 文件（无降噪）
     private func convertChunkWithAVFoundation(
         inputURL: URL,
         outputURL: URL,

@@ -186,9 +186,91 @@ enum AudioFileService {
         #if os(macOS)
         try extractAudioFromVideoWithProcess(from: videoURL, to: audioURL)
         #else
-        try FFmpegLibDenoiser.extractAudio(from: videoURL, to: audioURL)
+        try extractAudioFromVideoWithAVFoundation(from: videoURL, to: audioURL)
         #endif
     }
+
+    #if os(iOS)
+    /// iOS: 使用 AVAssetReader 从视频文件提取音频为 16kHz 单声道 WAV
+    private static func extractAudioFromVideoWithAVFoundation(from videoURL: URL, to audioURL: URL) throws {
+        let asset = AVURLAsset(url: videoURL)
+        guard let audioTrack = asset.tracks(withMediaType: .audio).first else {
+            throw AudioFileServiceError.audioExtractionFailed("视频文件中未找到音频轨道")
+        }
+
+        let reader = try AVAssetReader(asset: asset)
+
+        let readerSettings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVSampleRateKey: targetSampleRate,
+            AVNumberOfChannelsKey: 1,
+            AVLinearPCMBitDepthKey: 32,
+            AVLinearPCMIsFloatKey: true,
+            AVLinearPCMIsBigEndianKey: false,
+            AVLinearPCMIsNonInterleaved: false
+        ]
+
+        let trackOutput = AVAssetReaderTrackOutput(track: audioTrack, outputSettings: readerSettings)
+        trackOutput.alwaysCopiesSampleData = false
+        reader.add(trackOutput)
+
+        guard reader.startReading() else {
+            throw AudioFileServiceError.audioExtractionFailed(
+                reader.error?.localizedDescription ?? "AVAssetReader 启动失败"
+            )
+        }
+
+        let monoFormat = AVAudioFormat(
+            commonFormat: .pcmFormatFloat32,
+            sampleRate: targetSampleRate,
+            channels: 1,
+            interleaved: false
+        )!
+
+        let fileSettings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVSampleRateKey: targetSampleRate,
+            AVNumberOfChannelsKey: 1,
+            AVLinearPCMBitDepthKey: 32,
+            AVLinearPCMIsFloatKey: true,
+            AVLinearPCMIsBigEndianKey: false,
+            AVLinearPCMIsNonInterleaved: false
+        ]
+
+        let outputFile = try AVAudioFile(
+            forWriting: audioURL,
+            settings: fileSettings,
+            commonFormat: .pcmFormatFloat32,
+            interleaved: false
+        )
+
+        while reader.status == .reading {
+            guard let sampleBuffer = trackOutput.copyNextSampleBuffer() else { break }
+            let numSamples = CMSampleBufferGetNumSamples(sampleBuffer)
+            guard numSamples > 0 else { continue }
+
+            guard let blockBuffer = CMSampleBufferGetDataBuffer(sampleBuffer) else { continue }
+            var totalLength = 0
+            var dataPointer: UnsafeMutablePointer<Int8>?
+            CMBlockBufferGetDataPointer(blockBuffer, atOffset: 0, lengthAtOffsetOut: nil,
+                                        totalLengthOut: &totalLength, dataPointerOut: &dataPointer)
+            guard let data = dataPointer else { continue }
+
+            let frameCount = AVAudioFrameCount(numSamples)
+            guard let buffer = AVAudioPCMBuffer(pcmFormat: monoFormat, frameCapacity: frameCount) else { continue }
+            buffer.frameLength = frameCount
+
+            let bytesToCopy = min(totalLength, Int(frameCount) * MemoryLayout<Float>.size)
+            memcpy(buffer.floatChannelData![0], data, bytesToCopy)
+
+            try outputFile.write(from: buffer)
+        }
+
+        guard FileManager.default.fileExists(atPath: audioURL.path) else {
+            throw AudioFileServiceError.audioExtractionFailed("输出文件不存在")
+        }
+    }
+    #endif
 
     #if os(macOS)
     /// macOS: 使用 FFmpeg Process 从视频提取音频
