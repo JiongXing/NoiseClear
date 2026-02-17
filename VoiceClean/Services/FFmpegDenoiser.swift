@@ -285,7 +285,17 @@ final class FFmpegDenoiser: Sendable {
         let writer = try AVAssetWriter(outputURL: outputURL, fileType: fileType)
 
         // 视频输入：直通写入（不重编码，速度极快）
-        let videoInput = AVAssetWriterInput(mediaType: .video, outputSettings: nil)
+        // MP4 直通模式要求提供 sourceFormatHint，否则 AVAssetWriter 会抛出异常
+        var videoFormatHint: CMFormatDescription?
+        if let firstDesc = videoTrack.formatDescriptions.first {
+            videoFormatHint = (firstDesc as! CMFormatDescription)
+        }
+
+        let videoInput = AVAssetWriterInput(
+            mediaType: .video,
+            outputSettings: nil,
+            sourceFormatHint: videoFormatHint
+        )
         videoInput.expectsMediaDataInRealTime = false
         writer.add(videoInput)
 
@@ -377,6 +387,7 @@ final class FFmpegDenoiser: Sendable {
         let semaphore = DispatchSemaphore(value: 0)
         writer.finishWriting { semaphore.signal() }
         semaphore.wait()
+
 
         guard writer.status == .completed else {
             throw FFmpegDenoiserError.writerFailed(
