@@ -66,6 +66,14 @@ final class PlayerViewModel {
     var errorMessage: String?
     var showError: Bool = false
 
+    // MARK: - 在线文件
+
+    /// URL 输入框文本
+    var urlInputText: String = ""
+
+    /// 是否正在下载在线文件
+    var isDownloading: Bool = false
+
     // MARK: - iOS 文件选择状态
 
     #if os(iOS)
@@ -156,6 +164,33 @@ final class PlayerViewModel {
             if securityScoped { url.stopAccessingSecurityScopedResource() }
             showErrorMessage("无法读取文件: \(error.localizedDescription)")
         }
+    }
+
+    /// 从在线 URL 加载文件
+    func loadFromURL() async {
+        let trimmed = urlInputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            showErrorMessage("请输入有效的 URL")
+            return
+        }
+
+        guard let url = URL(string: trimmed),
+              let scheme = url.scheme?.lowercased(),
+              ["http", "https"].contains(scheme) else {
+            showErrorMessage("请输入有效的 HTTP/HTTPS 地址")
+            return
+        }
+
+        isDownloading = true
+
+        do {
+            let localURL = try await downloadRemoteFile(from: url)
+            await loadFile(url: localURL)
+        } catch {
+            showErrorMessage("下载失败: \(error.localizedDescription)")
+        }
+
+        isDownloading = false
     }
 
     /// 通过文件选择面板导入
@@ -515,6 +550,57 @@ final class PlayerViewModel {
             playerToStop?.stop()
             denoiserToStop?.stop()
         }
+    }
+
+    /// 下载远程文件到临时目录
+    private func downloadRemoteFile(from url: URL) async throws -> URL {
+        let (tempURL, response) = try await URLSession.shared.download(from: url)
+
+        if let httpResponse = response as? HTTPURLResponse,
+           !(200...299).contains(httpResponse.statusCode) {
+            throw NSError(domain: "PlayerViewModel", code: httpResponse.statusCode, userInfo: [
+                NSLocalizedDescriptionKey: "服务器返回错误 (\(httpResponse.statusCode))"
+            ])
+        }
+
+        // 从 URL 路径获取文件扩展名，回退到 MIME 类型推断
+        var ext = url.pathExtension.lowercased()
+        if ext.isEmpty || !kAllSupportedExtensions.contains(ext) {
+            if let mimeType = response.mimeType?.lowercased() {
+                ext = Self.extensionForMIMEType(mimeType)
+            }
+        }
+
+        let destURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("vc_online_\(UUID().uuidString)")
+            .appendingPathExtension(ext)
+
+        // download(from:) 返回的临时文件需移动到我们的目标位置
+        if FileManager.default.fileExists(atPath: destURL.path) {
+            try FileManager.default.removeItem(at: destURL)
+        }
+        try FileManager.default.moveItem(at: tempURL, to: destURL)
+
+        return destURL
+    }
+
+    /// 根据 MIME 类型推断文件扩展名
+    private static func extensionForMIMEType(_ mimeType: String) -> String {
+        let mapping: [String: String] = [
+            "audio/mpeg": "mp3",
+            "audio/mp3": "mp3",
+            "audio/mp4": "m4a",
+            "audio/x-m4a": "m4a",
+            "audio/aac": "aac",
+            "audio/wav": "wav",
+            "audio/x-wav": "wav",
+            "audio/aiff": "aiff",
+            "audio/x-aiff": "aiff",
+            "audio/flac": "flac",
+            "video/mp4": "mp4",
+            "video/quicktime": "mov",
+        ]
+        return mapping[mimeType] ?? "mp3"
     }
 
     /// 显示错误消息

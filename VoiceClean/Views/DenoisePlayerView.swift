@@ -103,17 +103,38 @@ struct DenoisePlayerView: View {
                 audioVisualArea
             }
         } else {
-            // 未加载文件：显示拖拽区域
-            DropZoneView(
-                onDrop: { urls in
-                    if let url = urls.first {
-                        Task { await viewModel.loadFile(url: url) }
+            // 未加载文件：显示拖拽区域 + URL 输入
+            VStack(spacing: 16) {
+                DropZoneView(
+                    onDrop: { urls in
+                        if let url = urls.first {
+                            Task { await viewModel.loadFile(url: url) }
+                        }
+                    },
+                    onTap: {
+                        Task { await viewModel.selectFile() }
                     }
-                },
-                onTap: {
-                    Task { await viewModel.selectFile() }
+                )
+
+                // 分隔线 "或"
+                HStack(spacing: 12) {
+                    Rectangle()
+                        .fill(Color.primary.opacity(0.1))
+                        .frame(height: 1)
+
+                    Text("或")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+
+                    Rectangle()
+                        .fill(Color.primary.opacity(0.1))
+                        .frame(height: 1)
                 }
-            )
+                .padding(.horizontal, 4)
+
+                // 在线 URL 输入区域
+                urlInputSection
+            }
         }
     }
 
@@ -160,6 +181,100 @@ struct DenoisePlayerView: View {
             }
         }
         .frame(minHeight: 200, maxHeight: 280)
+    }
+
+    // MARK: - URL 输入区域
+
+    private var urlInputSection: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "link")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 20)
+
+                TextField("输入在线音频/视频 URL", text: $viewModel.urlInputText)
+                    .textFieldStyle(.plain)
+                    .font(.subheadline)
+                    .autocorrectionDisabled()
+                    #if os(iOS)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
+                    #endif
+
+                // 粘贴按钮
+                Button {
+                    pasteFromClipboard()
+                } label: {
+                    Image(systemName: "doc.on.clipboard")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.borderless)
+                .help("粘贴")
+
+                // 清空按钮
+                if !viewModel.urlInputText.isEmpty {
+                    Button {
+                        viewModel.urlInputText = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.subheadline)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .buttonStyle(.borderless)
+                    .help("清空")
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(.ultraThinMaterial)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 10)
+                            .strokeBorder(Color.primary.opacity(0.1), lineWidth: 1)
+                    }
+            }
+
+            // 加载按钮
+            Button {
+                Task { await viewModel.loadFromURL() }
+            } label: {
+                HStack(spacing: 6) {
+                    if viewModel.isDownloading {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("下载中...")
+                    } else {
+                        Image(systemName: "arrow.down.circle")
+                        Text("加载在线文件")
+                    }
+                }
+                .font(.subheadline)
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.regular)
+            .disabled(
+                viewModel.urlInputText
+                    .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                || viewModel.isDownloading
+            )
+        }
+    }
+
+    /// 从剪贴板粘贴内容到 URL 输入框
+    private func pasteFromClipboard() {
+        #if os(macOS)
+        if let string = NSPasteboard.general.string(forType: .string) {
+            viewModel.urlInputText = string
+        }
+        #else
+        if let string = UIPasteboard.general.string {
+            viewModel.urlInputText = string
+        }
+        #endif
     }
 
     // MARK: - 播放控制条
