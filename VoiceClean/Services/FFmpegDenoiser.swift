@@ -321,7 +321,7 @@ final class FFmpegDenoiser: Sendable {
 
         // 视频直通写入
         group.enter()
-        let videoQueue = DispatchQueue(label: "com.voiceclean.denoise.video")
+        let videoQueue = DispatchQueue(label: "com.voiceclean.denoise.video", qos: .userInitiated)
         videoInput.requestMediaDataWhenReady(on: videoQueue) { [videoReader, videoReaderOutput] in
             while videoInput.isReadyForMoreMediaData {
                 if videoReader.status == .reading,
@@ -337,7 +337,7 @@ final class FFmpegDenoiser: Sendable {
 
         // 降噪音频写入
         group.enter()
-        let audioQueue = DispatchQueue(label: "com.voiceclean.denoise.audio")
+        let audioQueue = DispatchQueue(label: "com.voiceclean.denoise.audio", qos: .userInitiated)
         nonisolated(unsafe) var audioWriteOffset = 0
         let totalAudioSamples = denoisedSamples.count
         let audioChunkSize = 4096
