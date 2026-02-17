@@ -34,17 +34,17 @@ final class AudioViewModel {
     /// 当前选中的文件 ID（用于详情/波形展示）
     var selectedFileID: UUID?
 
-    // MARK: - iOS 文件选择状态（由 View 层的 .fileImporter/.fileExporter 消费）
+    // MARK: - iOS 文件选择与导出状态
 
     #if os(iOS)
     /// 是否展示文件选择器（由 View 层 .fileImporter 绑定）
     var showFilePicker: Bool = false
 
-    /// 是否展示保存面板（由 View 层 .fileExporter 绑定）
-    var showSavePanel: Bool = false
+    /// 是否展示分享面板（由 View 层 .sheet 绑定）
+    var showShareSheet: Bool = false
 
-    /// 待导出的文件（用于 .fileExporter）
-    var pendingExportFile: AudioFileItem?
+    /// 待导出的文件 URL 列表（用于分享面板）
+    var pendingExportURLs: [URL] = []
 
     /// 是否展示相册选择器
     var showPhotoPicker: Bool = false
@@ -195,28 +195,27 @@ final class AudioViewModel {
             showErrorMessage("导出失败: \(error.localizedDescription)")
         }
         #else
-        pendingExportFile = item
-        showSavePanel = true
+        guard case .completed(let tempURL) = item.status else { return }
+        pendingExportURLs = [tempURL]
+        showShareSheet = true
         #endif
     }
 
-    #if os(iOS)
-    /// iOS: 将文件导出到用户选择的位置
-    func exportFileToURL(_ item: AudioFileItem, destination: URL) {
-        guard case .completed(let tempURL) = item.status else { return }
-        do {
-            try AudioFileService.exportFile(from: tempURL, to: destination)
-        } catch {
-            showErrorMessage("导出失败: \(error.localizedDescription)")
-        }
-    }
-    #endif
-
     /// 导出所有已完成的文件
     func exportAll() async {
+        #if os(macOS)
         for item in audioFiles where item.status.isCompleted {
             await exportFile(item)
         }
+        #else
+        let urls = audioFiles.compactMap { item -> URL? in
+            guard case .completed(let url) = item.status else { return nil }
+            return url
+        }
+        guard !urls.isEmpty else { return }
+        pendingExportURLs = urls
+        showShareSheet = true
+        #endif
     }
 
     // MARK: - 私有方法

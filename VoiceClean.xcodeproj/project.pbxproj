@@ -266,6 +266,7 @@
 					"$(SRCROOT)/VoiceClean/Libraries/RNNoise/include",
 				);
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				"INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription" = "需要访问相册以保存降噪后的视频";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=iphoneos*]" = (
@@ -317,6 +318,7 @@
 					"$(SRCROOT)/VoiceClean/Libraries/RNNoise/include",
 				);
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				"INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription" = "需要访问相册以保存降噪后的视频";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=iphoneos*]" = (

@@ -154,6 +154,14 @@ struct FileConversionView: View {
                 importingOverlay
             }
         }
+        .onChange(of: viewModel.showShareSheet) { _, show in
+            if show {
+                let urls = viewModel.pendingExportURLs
+                viewModel.showShareSheet = false
+                guard !urls.isEmpty else { return }
+                presentShareSheet(items: urls)
+            }
+        }
         #endif
         .alert("错误", isPresented: $viewModel.showError) {
             Button("确定", role: .cancel) {}
@@ -355,6 +363,43 @@ struct FileConversionView: View {
     }
     #endif
 }
+
+// MARK: - iOS 分享面板
+
+#if os(iOS)
+/// 通过 UIKit 直接 present UIActivityViewController，避免 SwiftUI .sheet 包装导致的主线程卡顿
+private func presentShareSheet(items: [Any]) {
+    guard let windowScene = UIApplication.shared.connectedScenes
+        .compactMap({ $0 as? UIWindowScene }).first,
+          let rootVC = windowScene.keyWindow?.rootViewController else { return }
+
+    let topVC = topViewController(from: rootVC)
+    let activityVC = UIActivityViewController(activityItems: items, applicationActivities: nil)
+
+    // iPad 需要 popover 锚点
+    if let popover = activityVC.popoverPresentationController {
+        popover.sourceView = topVC.view
+        popover.sourceRect = CGRect(x: topVC.view.bounds.midX, y: topVC.view.bounds.midY, width: 0, height: 0)
+        popover.permittedArrowDirections = []
+    }
+
+    topVC.present(activityVC, animated: true)
+}
+
+/// 递归查找最顶层的 ViewController
+private func topViewController(from vc: UIViewController) -> UIViewController {
+    if let presented = vc.presentedViewController {
+        return topViewController(from: presented)
+    }
+    if let nav = vc as? UINavigationController, let top = nav.topViewController {
+        return topViewController(from: top)
+    }
+    if let tab = vc as? UITabBarController, let selected = tab.selectedViewController {
+        return topViewController(from: selected)
+    }
+    return vc
+}
+#endif
 
 #Preview {
     FileConversionView()
