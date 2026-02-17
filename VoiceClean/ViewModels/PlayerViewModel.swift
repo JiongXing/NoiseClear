@@ -130,6 +130,9 @@ final class PlayerViewModel {
     /// 当前应处理的下一段起始时间（秒）
     private var nextChunkStartTime: TimeInterval = 0
 
+    /// 上次漂移校正的时间戳（用于节流，避免频繁 seek 造成画面跳动）
+    private var lastDriftCorrectionTime: TimeInterval = 0
+
     // MARK: - 文件管理
 
     /// 加载媒体文件
@@ -161,6 +164,7 @@ final class PlayerViewModel {
             if isVideo {
                 let player = AVPlayer(url: url)
                 player.isMuted = true  // 音频由 AVAudioEngine 播放
+                player.automaticallyWaitsToMinimizeStalling = false  // 减少缓冲延迟，配合 preroll 使用
                 self.avPlayer = player
             } else {
                 self.avPlayer = nil
@@ -231,38 +235,92 @@ final class PlayerViewModel {
         allDataRead = false
         nextChunkStartTime = seekOffset
 
+        // 捕获后台处理所需的值，避免在非主线程访问 @MainActor 属性
+        let capturedDenoiseEnabled = denoiseEnabled
+        let capturedStrength = Float(denoiseStrength)
+        let capturedIsVideo = isVideo
+        let capturedStartTime = nextChunkStartTime
+        let capturedDuration = duration
+        let capturedChunkDur = chunkDuration
+        let capturedPrefillDur = initialPrefillDuration
+        let capturedVolume = Float(volume)
+
         do {
-            // 创建流式降噪引擎
-            let newDenoiser = try StreamingDenoiser()
+            // 将 CPU 密集型的降噪处理和预填充移到后台线程，避免阻塞 UI
+            let (newDenoiser, newPlayer, prefilledDuration, updatedNextStart) =
+                try await withCheckedThrowingContinuation {
+                    (continuation: CheckedContinuation<(StreamingDenoiser, AudioEnginePlayer, TimeInterval, TimeInterval), Error>) in
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        do {
+                            // 创建并启动首个降噪 chunk
+                            let denoiser = try StreamingDenoiser()
+                            let initialDur = min(capturedChunkDur, max(0, capturedDuration - capturedStartTime))
+                            if capturedDenoiseEnabled {
+                                try denoiser.start(
+                                    inputURL: fileURL, strength: capturedStrength,
+                                    startTime: capturedStartTime, maxDuration: initialDur,
+                                    isVideo: capturedIsVideo
+                                )
+                            } else {
+                                try denoiser.startOriginal(
+                                    inputURL: fileURL, startTime: capturedStartTime,
+                                    maxDuration: initialDur, isVideo: capturedIsVideo
+                                )
+                            }
+                            var nextStart = capturedStartTime + initialDur
 
-            // 只启动首个小段，而不是整段文件
-            let initialChunkDuration = min(chunkDuration, max(0, duration - nextChunkStartTime))
-            try startDenoiserChunk(
-                denoiser: newDenoiser,
-                fileURL: fileURL,
-                startTime: nextChunkStartTime,
-                chunkDuration: initialChunkDuration
-            )
-            nextChunkStartTime += initialChunkDuration
+                            // 创建音频播放引擎
+                            let player = AudioEnginePlayer()
+                            try player.setup(format: StreamingDenoiser.outputFormat)
+                            player.volume = capturedVolume
+
+                            // 预填充缓冲区
+                            var buffered: TimeInterval = 0
+                            var activeDenoiser = denoiser
+
+                            while buffered < capturedPrefillDur {
+                                if let buffer = activeDenoiser.readNextBuffer() {
+                                    player.scheduleBuffer(buffer)
+                                    buffered += TimeInterval(buffer.frameLength) / StreamingDenoiser.sampleRate
+                                    continue
+                                }
+                                activeDenoiser.stop()
+                                let remaining = capturedDuration - nextStart
+                                guard remaining > 0.01 else { break }
+
+                                let chunkDur = min(capturedChunkDur, remaining)
+                                let nextDenoiser = try StreamingDenoiser()
+                                if capturedDenoiseEnabled {
+                                    try nextDenoiser.start(
+                                        inputURL: fileURL, strength: capturedStrength,
+                                        startTime: nextStart, maxDuration: chunkDur,
+                                        isVideo: capturedIsVideo
+                                    )
+                                } else {
+                                    try nextDenoiser.startOriginal(
+                                        inputURL: fileURL, startTime: nextStart,
+                                        maxDuration: chunkDur, isVideo: capturedIsVideo
+                                    )
+                                }
+                                nextStart += chunkDur
+                                activeDenoiser = nextDenoiser
+                            }
+
+                            continuation.resume(returning: (activeDenoiser, player, buffered, nextStart))
+                        } catch {
+                            continuation.resume(throwing: error)
+                        }
+                    }
+                }
+
             self.denoiser = newDenoiser
-
-            // 创建音频播放引擎
-            let newPlayer = AudioEnginePlayer()
-            try newPlayer.setup(format: StreamingDenoiser.outputFormat)
-            newPlayer.volume = Float(volume)
             self.audioPlayer = newPlayer
+            self.nextChunkStartTime = updatedNextStart
 
             // 后台读取队列
             let queue = DispatchQueue(label: "com.voiceclean.streaming", qos: .userInitiated)
             self.readQueue = queue
             self.shouldContinueReading = true
-
-            // 预填充：只准备即将播放的一小段
-            let prefilledDuration = try prefillInitialBuffers(
-                denoiser: newDenoiser,
-                player: newPlayer,
-                fileURL: fileURL
-            )
 
             guard prefilledDuration > 0 else {
                 throw NSError(domain: "PlayerViewModel", code: -1, userInfo: [
@@ -270,17 +328,35 @@ final class PlayerViewModel {
                 ])
             }
 
-            // 开始播放
-            newPlayer.play()
-            isPlaying = true
-            isLoading = false
-
-            // 视频同步播放
+            // 视频：预加载 + host time 同步启动
             if isVideo, let avPlayer {
                 let seekTime = CMTime(seconds: seekOffset, preferredTimescale: 600)
                 await avPlayer.seek(to: seekTime, toleranceBefore: .zero, toleranceAfter: .zero)
-                avPlayer.play()
+                let prerolled = await avPlayer.preroll(atRate: 1.0)
+
+                if prerolled {
+                    // 使用 host time 精确同步音视频启动时刻
+                    let hostClock = CMClockGetHostTimeClock()
+                    let now = CMClockGetTime(hostClock)
+                    let delay = CMTimeMakeWithSeconds(0.05, preferredTimescale: 600)
+                    let startHostTime = CMTimeAdd(now, delay)
+
+                    avPlayer.setRate(1.0, time: seekTime, atHostTime: startHostTime)
+
+                    let machTime = CMClockConvertHostTimeToSystemUnits(startHostTime)
+                    let audioTime = AVAudioTime(hostTime: machTime)
+                    newPlayer.play(at: audioTime)
+                } else {
+                    // preroll 失败，回退到简单播放
+                    newPlayer.play()
+                    avPlayer.play()
+                }
+            } else {
+                newPlayer.play()
             }
+
+            isPlaying = true
+            isLoading = false
 
             // 启动后台持续读取
             startReadingLoop(
@@ -445,42 +521,6 @@ final class PlayerViewModel {
         }
     }
 
-    /// 播放前预填充少量数据，避免起播卡顿
-    private func prefillInitialBuffers(
-        denoiser: StreamingDenoiser,
-        player: AudioEnginePlayer,
-        fileURL: URL
-    ) throws -> TimeInterval {
-        var buffered: TimeInterval = 0
-        var activeDenoiser = denoiser
-
-        while buffered < initialPrefillDuration {
-            if let buffer = activeDenoiser.readNextBuffer() {
-                player.scheduleBuffer(buffer)
-                buffered += TimeInterval(buffer.frameLength) / StreamingDenoiser.sampleRate
-                continue
-            }
-
-            activeDenoiser.stop()
-            let remaining = duration - nextChunkStartTime
-            guard remaining > 0.01 else { break }
-
-            let nextDuration = min(chunkDuration, remaining)
-            let nextDenoiser = try StreamingDenoiser()
-            try startDenoiserChunk(
-                denoiser: nextDenoiser,
-                fileURL: fileURL,
-                startTime: nextChunkStartTime,
-                chunkDuration: nextDuration
-            )
-            nextChunkStartTime += nextDuration
-            self.denoiser = nextDenoiser
-            activeDenoiser = nextDenoiser
-        }
-
-        return buffered
-    }
-
     /// 启动一个指定区间的小段降噪（或原始）读取
     private func startDenoiserChunk(
         denoiser: StreamingDenoiser,
@@ -520,6 +560,7 @@ final class PlayerViewModel {
     /// 启动定时器更新播放时间
     private func startTimeUpdateTimer() {
         timeUpdateTimer?.invalidate()
+        lastDriftCorrectionTime = ProcessInfo.processInfo.systemUptime
         timeUpdateTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self, self.isPlaying else { return }
@@ -530,6 +571,25 @@ final class PlayerViewModel {
                     // 防止超出总时长
                     if self.currentTime >= self.duration {
                         self.currentTime = self.duration
+                    }
+
+                    // 音视频漂移校正：以音频时钟为基准，检测视频偏差并修正
+                    if self.isVideo, let avPlayer = self.avPlayer, avPlayer.rate > 0 {
+                        let videoTime = avPlayer.currentTime().seconds
+                        let audioTime = self.currentTime
+                        let drift = audioTime - videoTime
+                        let now = ProcessInfo.processInfo.systemUptime
+
+                        // 漂移超过 100ms 且距上次校正至少 2 秒，避免频繁 seek 造成画面跳动
+                        if abs(drift) > 0.1 && (now - self.lastDriftCorrectionTime) > 2.0 {
+                            let target = CMTime(seconds: audioTime, preferredTimescale: 600)
+                            avPlayer.seek(
+                                to: target,
+                                toleranceBefore: CMTimeMakeWithSeconds(0.1, preferredTimescale: 600),
+                                toleranceAfter: CMTimeMakeWithSeconds(0.1, preferredTimescale: 600)
+                            )
+                            self.lastDriftCorrectionTime = now
+                        }
                     }
 
                     // 检测是否真正播放完毕：

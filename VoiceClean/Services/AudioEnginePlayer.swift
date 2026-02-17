@@ -131,6 +131,18 @@ final class AudioEnginePlayer {
         playerNode.play()
     }
 
+    /// 在指定的 host time 开始播放（用于音视频同步启动）
+    ///
+    /// 通过 `AVAudioPlayerNode.play(at:)` 精确调度播放起始时刻，
+    /// 配合 `AVPlayer.setRate(_:time:atHostTime:)` 实现帧级同步。
+    func play(at time: AVAudioTime) {
+        guard isSetUp else { return }
+        if !engine.isRunning {
+            try? engine.start()
+        }
+        playerNode.play(at: time)
+    }
+
     /// 暂停播放（保留队列中的 buffer）
     func pause() {
         playerNode.pause()
