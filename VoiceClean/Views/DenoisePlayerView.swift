@@ -22,40 +22,40 @@ struct DenoisePlayerView: View {
     @State private var seekProgress: Double = 0
 
     var body: some View {
-        VStack(spacing: 0) {
-            // 顶部标题栏
-            headerView
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 12)
+        ScrollView {
+            VStack(spacing: 16) {
+                // 媒体展示区域
+                mediaDisplayArea
 
-            Divider()
-                .padding(.horizontal, 16)
+                // 播放控制条
+                if viewModel.hasFile {
+                    playerControlsSection
+                }
 
-            // 主内容区域
-            ScrollView {
-                VStack(spacing: 16) {
-                    // 媒体展示区域
-                    mediaDisplayArea
+                // 降噪 & 音量控制
+                if viewModel.hasFile {
+                    settingsSection
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+        }
+        .background(Color.platformBackground)
+        .toolbar {
+            if viewModel.hasFile {
+                ToolbarItem(placement: .automatic) {
+                    HStack(spacing: 8) {
+                        Image(systemName: viewModel.isVideo ? "film" : "music.note")
+                            .foregroundStyle(.secondary)
 
-                    // 播放控制条
-                    if viewModel.hasFile {
-                        playerControlsSection
-                    }
-
-                    // 降噪 & 音量控制
-                    if viewModel.hasFile {
-                        settingsSection
+                        Text(viewModel.fileName)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
             }
         }
-        #if os(macOS)
-        .frame(minWidth: 500, minHeight: 450)
-        #endif
-        .background(Color.platformBackground)
         #if os(iOS)
         .fileImporter(
             isPresented: $viewModel.showFilePicker,
@@ -78,43 +78,6 @@ struct DenoisePlayerView: View {
         } message: {
             if let msg = viewModel.errorMessage {
                 Text(msg)
-            }
-        }
-    }
-
-    // MARK: - 顶部标题栏
-
-    private var headerView: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 8) {
-                    Image(systemName: "play.circle")
-                        .font(.title2)
-                        .foregroundStyle(Color.accentColor)
-
-                    Text("降噪播放")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                }
-
-                Text("实时降噪 · 边播边听")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer()
-
-            // 文件信息
-            if viewModel.hasFile {
-                HStack(spacing: 8) {
-                    Image(systemName: viewModel.isVideo ? "film" : "music.note")
-                        .foregroundStyle(.secondary)
-
-                    Text(viewModel.fileName)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
             }
         }
     }

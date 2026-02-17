@@ -17,15 +17,6 @@ struct FileConversionView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // 顶部标题栏
-            headerView
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 12)
-
-            Divider()
-                .padding(.horizontal, 16)
-
             // 主内容区域
             ScrollView {
                 VStack(spacing: 16) {
@@ -68,10 +59,31 @@ struct FileConversionView: View {
                     .padding(.vertical, 12)
             }
         }
-        #if os(macOS)
-        .frame(minWidth: 500, minHeight: 450)
-        #endif
         .background(Color.platformBackground)
+        .toolbar {
+            if !viewModel.audioFiles.isEmpty {
+                ToolbarItem(placement: .automatic) {
+                    HStack(spacing: 12) {
+                        Label(
+                            "\(viewModel.audioFiles.count) 个文件",
+                            systemImage: "doc.on.doc"
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                        let completed = viewModel.audioFiles.filter { $0.status.isCompleted }.count
+                        if completed > 0 {
+                            Label(
+                                "\(completed) 已完成",
+                                systemImage: "checkmark.circle"
+                            )
+                            .font(.caption)
+                            .foregroundStyle(.green)
+                        }
+                    }
+                }
+            }
+        }
         #if os(iOS)
         .fileImporter(
             isPresented: $viewModel.showFilePicker,
@@ -103,52 +115,6 @@ struct FileConversionView: View {
             return viewModel.audioFiles.first
         }
         return viewModel.audioFiles.first { $0.id == id }
-    }
-
-    // MARK: - 顶部标题栏
-
-    private var headerView: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 8) {
-                    Image(systemName: "doc.on.doc")
-                        .font(.title2)
-                        .foregroundStyle(Color.accentColor)
-
-                    Text("文件转换")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                }
-
-                Text("批量降噪 · 导出文件")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer()
-
-            // 文件数量统计
-            if !viewModel.audioFiles.isEmpty {
-                HStack(spacing: 12) {
-                    Label(
-                        "\(viewModel.audioFiles.count) 个文件",
-                        systemImage: "doc.on.doc"
-                    )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                    let completed = viewModel.audioFiles.filter { $0.status.isCompleted }.count
-                    if completed > 0 {
-                        Label(
-                            "\(completed) 已完成",
-                            systemImage: "checkmark.circle"
-                        )
-                        .font(.caption)
-                        .foregroundStyle(.green)
-                    }
-                }
-            }
-        }
     }
 
     // MARK: - 文件列表区域
