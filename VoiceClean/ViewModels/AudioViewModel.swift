@@ -261,7 +261,9 @@ final class AudioViewModel {
                             duration: duration,
                             isVideo: isVideo
                         ) { progress in
+                            // 进度回调已在 FFmpegDenoiser 内节流至每 1%，主线程更新开销可接受
                             DispatchQueue.main.async {
+                                guard fileIndex < self.audioFiles.count else { return }
                                 self.audioFiles[fileIndex].status = .processing(progress)
                             }
                         }

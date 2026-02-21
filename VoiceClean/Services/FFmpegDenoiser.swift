@@ -5,6 +5,7 @@
 //  Created by jxing on 2026/2/14.
 //
 
+import Accelerate
 import AVFoundation
 import CoreMedia
 import Foundation
@@ -421,34 +422,48 @@ final class FFmpegDenoiser: Sendable {
         defer { processor.close() }
 
         let frameSize = RNNoiseProcessor.frameSize
-        let scaleFactor: Float = 32768.0
-        let invScaleFactor: Float = 1.0 / 32768.0
+        var scaleFactor: Float = 32768.0
+        var invScaleFactor: Float = 1.0 / 32768.0
         var result = [Float](repeating: 0, count: count)
         var offset = 0
+
+        // 预分配帧缓冲区，避免每帧重复分配（90 分钟约 54 万次分配 → 0 次）
+        var inputFrame = [Float](repeating: 0, count: frameSize)
+        var outputFrame = [Float](repeating: 0, count: frameSize)
+
+        // 进度回调节流：每前进约 1% 才回调一次，避免 54 万次回调导致的性能损耗
+        var lastReportedProgress: Double = -1
 
         while offset < count {
             let remaining = count - offset
             let currentSize = min(frameSize, remaining)
 
-            var inputFrame = [Float](repeating: 0, count: frameSize)
-            for i in 0..<currentSize {
-                inputFrame[i] = samples[offset + i] * scaleFactor
+            // 使用 vDSP 加速缩放（替代手动 for 循环）
+            vDSP_vsmul(samples + offset, 1, &scaleFactor, &inputFrame, 1, vDSP_Length(currentSize))
+            if currentSize < frameSize {
+                for i in currentSize..<frameSize { inputFrame[i] = 0 }
             }
 
-            var outputFrame = [Float](repeating: 0, count: frameSize)
             processor.processFrame(output: &outputFrame, input: &inputFrame)
 
-            for i in 0..<currentSize {
-                let denoised = outputFrame[i] * invScaleFactor
-                if strength >= 1.0 {
-                    result[offset + i] = denoised
-                } else {
-                    result[offset + i] = samples[offset + i] * (1.0 - strength) + denoised * strength
-                }
+            // 输出：反缩放 + 可选混合（使用 vDSP 加速）
+            if strength >= 1.0 {
+                vDSP_vsmul(outputFrame, 1, &invScaleFactor, &result[offset], 1, vDSP_Length(currentSize))
+            } else {
+                // 复用 inputFrame 存放缩放后的降噪结果，再用 vDSP_vintb 做线性插值
+                vDSP_vsmul(outputFrame, 1, &invScaleFactor, &inputFrame, 1, vDSP_Length(currentSize))
+                var strengthVar = strength
+                vDSP_vintb(samples + offset, 1, &inputFrame, 1, &strengthVar, &result[offset], 1, vDSP_Length(currentSize))
             }
 
             offset += frameSize
-            onProgress?(Double(offset) / Double(count))
+
+            // 节流后的进度回调：每 1% 或结束时回调
+            let progress = Double(offset) / Double(count)
+            if let cb = onProgress, progress - lastReportedProgress >= 0.01 || progress >= 1.0 {
+                lastReportedProgress = progress
+                cb(progress)
+            }
         }
 
         return result
