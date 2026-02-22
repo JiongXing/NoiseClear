@@ -1,6 +1,6 @@
 //
 //  ContentView.swift
-//  VoiceClean
+//  VoiceClear
 //
 //  Created by jxing on 2026/2/12.
 //
@@ -102,7 +102,7 @@ struct ContentView: View {
             .frame(maxWidth: .infinity)
         }
         .background(Color.platformBackground)
-        .navigationTitle("VoiceClean")
+        .navigationTitle("VoiceClear")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
@@ -131,7 +131,7 @@ struct ContentView: View {
                 )
                 .symbolEffect(.pulse, options: .repeating.speed(0.5))
 
-            Text("VoiceClean")
+            Text("VoiceClear")
                 .font(.largeTitle)
                 .fontWeight(.bold)
 

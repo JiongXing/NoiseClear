@@ -12,8 +12,8 @@
 	"argv": [
 		"/opt/homebrew/bin/xcode-build-server"
 	],
-	"workspace": "/Users/Jason/Desktop/VoiceClean/VoiceClean.xcodeproj/project.xcworkspace",
-	"build_root": "/Users/Jason/Library/Developer/Xcode/DerivedData/VoiceClean-fjehfpafvbrnibdeevrajeknqrhs",
-	"scheme": "VoiceClean",
+	"workspace": "/Users/Jason/Desktop/VoiceClean/VoiceClear.xcodeproj/project.xcworkspace",
+	"build_root": "/Users/Jason/Library/Developer/Xcode/DerivedData/VoiceClear-fjehfpafvbrnibdeevrajeknqrhs",
+	"scheme": "VoiceClear",
 	"kind": "xcode"
 }

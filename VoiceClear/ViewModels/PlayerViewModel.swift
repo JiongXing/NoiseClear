@@ -1,6 +1,6 @@
 //
 //  PlayerViewModel.swift
-//  VoiceClean
+//  VoiceClear
 //
 //  Created by jxing on 2026/2/15.
 //
@@ -318,7 +318,7 @@ final class PlayerViewModel {
             self.nextChunkStartTime = updatedNextStart
 
             // 后台读取队列
-            let queue = DispatchQueue(label: "com.voiceclean.streaming", qos: .userInitiated)
+            let queue = DispatchQueue(label: "com.voiceclear.streaming", qos: .userInitiated)
             self.readQueue = queue
             self.shouldContinueReading = true
 

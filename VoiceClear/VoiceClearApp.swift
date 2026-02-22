@@ -1,6 +1,6 @@
 //
-//  VoiceCleanApp.swift
-//  VoiceClean
+//  VoiceClearApp.swift
+//  VoiceClear
 //
 //  Created by jxing on 2026/2/12.
 //
@@ -8,7 +8,7 @@
 import SwiftUI
 
 @main
-struct VoiceCleanApp: App {
+struct VoiceClearApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()

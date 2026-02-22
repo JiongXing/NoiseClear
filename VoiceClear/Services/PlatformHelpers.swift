@@ -1,6 +1,6 @@
 //
 //  PlatformHelpers.swift
-//  VoiceClean
+//  VoiceClear
 //
 //  跨平台辅助工具，统一 macOS 和 iOS 的平台差异
 //

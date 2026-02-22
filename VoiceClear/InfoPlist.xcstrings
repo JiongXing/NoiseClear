@@ -8,7 +8,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Voice Clean"
+            "value" : "Voice Clear"
           }
         }
       }
@@ -20,7 +20,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "VoiceClean"
+            "value" : "VoiceClear"
           }
         }
       }

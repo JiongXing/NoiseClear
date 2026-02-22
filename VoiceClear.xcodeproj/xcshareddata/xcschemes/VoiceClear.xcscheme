@@ -16,9 +16,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "966DFB4E2F3DBC3100A90038"
-               BuildableName = "VoiceClean.app"
-               BlueprintName = "VoiceClean"
-               ReferencedContainer = "container:VoiceClean.xcodeproj">
+               BuildableName = "VoiceClear.app"
+               BlueprintName = "VoiceClear"
+               ReferencedContainer = "container:VoiceClear.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -45,9 +45,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "966DFB4E2F3DBC3100A90038"
-            BuildableName = "VoiceClean.app"
-            BlueprintName = "VoiceClean"
-            ReferencedContainer = "container:VoiceClean.xcodeproj">
+            BuildableName = "VoiceClear.app"
+            BlueprintName = "VoiceClear"
+            ReferencedContainer = "container:VoiceClear.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -62,9 +62,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "966DFB4E2F3DBC3100A90038"
-            BuildableName = "VoiceClean.app"
-            BlueprintName = "VoiceClean"
-            ReferencedContainer = "container:VoiceClean.xcodeproj">
+            BuildableName = "VoiceClear.app"
+            BlueprintName = "VoiceClear"
+            ReferencedContainer = "container:VoiceClear.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

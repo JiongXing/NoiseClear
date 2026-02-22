@@ -1,8 +1,8 @@
-# VoiceClean
+# VoiceClear
 
 > 基于 RNNoise 神经网络的音视频人声降噪工具，支持 macOS 和 iOS 双平台。
 
-VoiceClean 是一款原生 Apple 平台应用，使用 **RNNoise**（Recurrent Neural Network Noise Suppression）C 库直接对音频和视频文件进行智能降噪。它能够在有效去除背景噪声的同时，最大程度地保留人声质量，适用于会议录音、课堂录音、播客后期、Vlog 配音等场景。
+VoiceClear 是一款原生 Apple 平台应用，使用 **RNNoise**（Recurrent Neural Network Noise Suppression）C 库直接对音频和视频文件进行智能降噪。它能够在有效去除背景噪声的同时，最大程度地保留人声质量，适用于会议录音、课堂录音、播客后期、Vlog 配音等场景。
 
 ## 功能特性
 
@@ -30,8 +30,8 @@ VoiceClean 是一款原生 Apple 平台应用，使用 **RNNoise**（Recurrent N
 ## 项目结构
 
 ```
-VoiceClean/
-├── VoiceCleanApp.swift            # 应用入口
+VoiceClear/
+├── VoiceClearApp.swift            # 应用入口
 ├── ContentView.swift              # 主界面（布局与交互编排）
 ├── Models/
 │   └── AudioFileItem.swift        # 媒体文件数据模型 & 处理状态机
@@ -167,11 +167,11 @@ AVAssetWriter
 1. 克隆仓库
 
 ```bash
-git clone https://github.com/your-username/VoiceClean.git
-cd VoiceClean
+git clone https://github.com/your-username/VoiceClear.git
+cd VoiceClear
 ```
 
-2. 用 Xcode 打开 `VoiceClean.xcodeproj`
+2. 用 Xcode 打开 `VoiceClear.xcodeproj`
 3. 选择目标设备为 **My Mac** 或 iOS 设备，点击 Run
 
 > RNNoise 模型已编译进 C 库源码（`Libraries/RNNoise/src/rnnoise_data.c`），无需额外下载模型文件。

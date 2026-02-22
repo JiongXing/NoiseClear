@@ -1,6 +1,6 @@
 //
 //  RNNoiseProcessor.swift
-//  VoiceClean
+//  VoiceClear
 //
 //  RNNoise 降噪处理器 — 原生 Swift 封装
 //
