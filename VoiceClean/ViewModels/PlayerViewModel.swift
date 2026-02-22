@@ -142,7 +142,7 @@ final class PlayerViewModel {
 
         let ext = url.pathExtension.lowercased()
         guard kAllSupportedExtensions.contains(ext) else {
-            showErrorMessage("不支持的文件格式: .\(ext)")
+            showErrorMessage(String(format: String(localized: "Unsupported format: .%@"), ext))
             return
         }
 
@@ -172,7 +172,7 @@ final class PlayerViewModel {
         } catch {
             // 加载失败，释放安全作用域
             if securityScoped { url.stopAccessingSecurityScopedResource() }
-            showErrorMessage("无法读取文件: \(error.localizedDescription)")
+            showErrorMessage(String(format: String(localized: "Cannot read file: %@"), error.localizedDescription))
         }
     }
 
@@ -180,14 +180,14 @@ final class PlayerViewModel {
     func loadFromURL() async {
         let trimmed = urlInputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            showErrorMessage("请输入有效的 URL")
+            showErrorMessage(String(localized: "Please enter a valid URL"))
             return
         }
 
         guard let url = URL(string: trimmed),
               let scheme = url.scheme?.lowercased(),
               ["http", "https"].contains(scheme) else {
-            showErrorMessage("请输入有效的 HTTP/HTTPS 地址")
+            showErrorMessage(String(localized: "Please enter a valid HTTP/HTTPS URL"))
             return
         }
 
@@ -197,7 +197,7 @@ final class PlayerViewModel {
             let localURL = try await downloadRemoteFile(from: url)
             await loadFile(url: localURL)
         } catch {
-            showErrorMessage("下载失败: \(error.localizedDescription)")
+            showErrorMessage(String(format: String(localized: "Download failed: %@"), error.localizedDescription))
         }
 
         isDownloading = false
@@ -324,7 +324,7 @@ final class PlayerViewModel {
 
             guard prefilledDuration > 0 else {
                 throw NSError(domain: "PlayerViewModel", code: -1, userInfo: [
-                    NSLocalizedDescriptionKey: "无法读取音频数据"
+                    NSLocalizedDescriptionKey: String(localized: "Cannot read audio data")
                 ])
             }
 
@@ -371,7 +371,7 @@ final class PlayerViewModel {
 
         } catch {
             isLoading = false
-            showErrorMessage("播放失败: \(error.localizedDescription)")
+            showErrorMessage(String(format: String(localized: "Playback failed: %@"), error.localizedDescription))
         }
     }
 
@@ -511,7 +511,7 @@ final class PlayerViewModel {
                     activeDenoiser = nextDenoiser
                 } catch {
                     DispatchQueue.main.async {
-                        self.showErrorMessage("播放失败: \(error.localizedDescription)")
+                        self.showErrorMessage(String(format: String(localized: "Playback failed: %@"), error.localizedDescription))
                         self.pause()
                     }
                     return
@@ -625,7 +625,7 @@ final class PlayerViewModel {
         if let httpResponse = response as? HTTPURLResponse,
            !(200...299).contains(httpResponse.statusCode) {
             throw NSError(domain: "PlayerViewModel", code: httpResponse.statusCode, userInfo: [
-                NSLocalizedDescriptionKey: "服务器返回错误 (\(httpResponse.statusCode))"
+                NSLocalizedDescriptionKey: String(format: String(localized: "Server returned error (%d)"), httpResponse.statusCode)
             ])
         }
 

@@ -34,8 +34,8 @@ enum AudioFileService {
     @MainActor
     static func openFilePicker() async -> [URL] {
         let panel = NSOpenPanel()
-        panel.title = "选择音频或视频文件"
-        panel.message = "选择一个或多个音频/视频文件进行降噪"
+        panel.title = String(localized: "Select audio or video files")
+        panel.message = String(localized: "Select one or more audio/video files for denoising")
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
         panel.canChooseFiles = true
@@ -53,7 +53,7 @@ enum AudioFileService {
         allowedContentTypes: [UTType] = [.wav]
     ) async -> URL? {
         let panel = NSSavePanel()
-        panel.title = "导出降噪后的文件"
+        panel.title = String(localized: "Export denoised file")
         panel.nameFieldStringValue = suggestedName
         panel.allowedContentTypes = allowedContentTypes
         panel.canCreateDirectories = true

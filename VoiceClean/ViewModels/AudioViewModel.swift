@@ -63,7 +63,11 @@ final class AudioViewModel {
 
     /// 是否有文件可以处理
     var hasFilesToProcess: Bool {
-        audioFiles.contains { $0.status == .idle || $0.status.displayText.hasPrefix("失败") }
+        audioFiles.contains { file in
+            if case .idle = file.status { return true }
+            if case .failed = file.status { return true }
+            return false
+        }
     }
 
     /// 是否有文件已完成处理
@@ -124,7 +128,7 @@ final class AudioViewModel {
                 )
                 audioFiles.append(item)
             } catch {
-                showErrorMessage("无法读取文件 \(url.lastPathComponent): \(error.localizedDescription)")
+                showErrorMessage(String(format: String(localized: "Cannot read file %@: %@"), url.lastPathComponent, error.localizedDescription))
             }
         }
     }
@@ -152,9 +156,13 @@ final class AudioViewModel {
         defer { isProcessing = false }
 
         for i in audioFiles.indices {
-            guard audioFiles[i].status == .idle
-                || audioFiles[i].status.displayText.hasPrefix("失败")
-            else { continue }
+            let canRetry: Bool
+            switch audioFiles[i].status {
+            case .idle: canRetry = true
+            case .failed: canRetry = true
+            default: canRetry = false
+            }
+            guard canRetry else { continue }
 
             await processFile(at: i)
         }
@@ -198,7 +206,7 @@ final class AudioViewModel {
         do {
             try AudioFileService.exportFile(from: tempURL, to: saveURL)
         } catch {
-            showErrorMessage("导出失败: \(error.localizedDescription)")
+            showErrorMessage(String(format: String(localized: "Export failed: %@"), error.localizedDescription))
         }
         #else
         guard case .completed(let tempURL) = item.status else { return }
@@ -298,7 +306,7 @@ final class AudioViewModel {
             audioFiles[index].status = .failed(error.localizedDescription)
             processingStartTime = nil
             estimatedRemainingSeconds = nil
-            showErrorMessage("处理 \(audioFiles[index].fileName) 失败: \(error.localizedDescription)")
+            showErrorMessage(String(format: String(localized: "Processing %@ failed: %@"), audioFiles[index].fileName, error.localizedDescription))
         }
     }
 

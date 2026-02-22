@@ -185,7 +185,7 @@ struct AudioFileRow: View {
             }
             Button("取消", role: .cancel) {}
         } message: {
-            Text("确定要移除「\(file.fileName)」吗？")
+            Text(String(format: String(localized: "确定要移除「%@」吗？"), file.fileName))
         }
         #if os(macOS)
         .onHover { hovering in

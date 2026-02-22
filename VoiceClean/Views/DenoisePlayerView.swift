@@ -107,11 +107,11 @@ struct DenoisePlayerView: View {
                     if let movie = try await item.loadTransferable(type: TransferableMovie.self) {
                         await viewModel.loadFile(url: movie.url)
                     } else {
-                        viewModel.errorMessage = "无法读取所选视频"
+                        viewModel.errorMessage = String(localized: "Cannot read selected video")
                         viewModel.showError = true
                     }
                 } catch {
-                    viewModel.errorMessage = "从相册导入失败: \(error.localizedDescription)"
+                    viewModel.errorMessage = String(format: String(localized: "Import from album failed: %@"), error.localizedDescription)
                     viewModel.showError = true
                 }
                 selectedPhotoItems = []

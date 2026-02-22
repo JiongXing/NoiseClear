@@ -16,6 +16,24 @@ enum FeatureItem: String, CaseIterable, Identifiable, Hashable {
 
     var id: String { rawValue }
 
+    /// 本地化后的功能名称（用于导航栏标题等）
+    var localizedTitle: String {
+        String(localized: String.LocalizationValue(stringLiteral: rawValue))
+    }
+
+    /// 本地化后的功能描述
+    var localizedSubtitle: String {
+        String(localized: String.LocalizationValue(stringLiteral: subtitleRaw))
+    }
+
+    /// 功能描述原始值（供本地化使用）
+    private var subtitleRaw: String {
+        switch self {
+        case .denoisePlayer:  return "实时降噪 · 边播边听"
+        case .fileConversion: return "批量降噪 · 导出文件"
+        }
+    }
+
     /// 功能图标
     var icon: String {
         switch self {
@@ -24,13 +42,8 @@ enum FeatureItem: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
-    /// 功能描述
-    var subtitle: String {
-        switch self {
-        case .denoisePlayer:  return "实时降噪 · 边播边听"
-        case .fileConversion: return "批量降噪 · 导出文件"
-        }
-    }
+    /// 功能描述（已本地化）
+    var subtitle: String { localizedSubtitle }
 
     /// 卡片渐变色
     var gradient: [Color] {
@@ -54,13 +67,13 @@ struct ContentView: View {
                     switch item {
                     case .denoisePlayer:
                         DenoisePlayerView()
-                            .navigationTitle(item.rawValue)
+                            .navigationTitle(item.localizedTitle)
                             #if os(macOS)
                             .navigationSubtitle(item.subtitle)
                             #endif
                     case .fileConversion:
                         FileConversionView()
-                            .navigationTitle(item.rawValue)
+                            .navigationTitle(item.localizedTitle)
                             #if os(macOS)
                             .navigationSubtitle(item.subtitle)
                             #endif
@@ -163,7 +176,7 @@ struct ContentView: View {
 
                 // 文字区域
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(item.rawValue)
+                    Text(item.localizedTitle)
                         .font(.headline)
                         .foregroundStyle(.primary)
 

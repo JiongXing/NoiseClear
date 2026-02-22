@@ -80,7 +80,7 @@ struct FileConversionView: View {
                 ToolbarItem(placement: .automatic) {
                     HStack(spacing: 12) {
                         Label(
-                            "\(viewModel.audioFiles.count) 个文件",
+                            String(format: String(localized: "%lld 个文件"), Int64(viewModel.audioFiles.count)),
                             systemImage: "doc.on.doc"
                         )
                         .font(.caption)
@@ -89,7 +89,7 @@ struct FileConversionView: View {
                         let completed = viewModel.audioFiles.filter { $0.status.isCompleted }.count
                         if completed > 0 {
                             Label(
-                                "\(completed) 已完成",
+                                String(format: String(localized: "%lld 已完成"), Int64(completed)),
                                 systemImage: "checkmark.circle"
                             )
                             .font(.caption)
@@ -139,7 +139,7 @@ struct FileConversionView: View {
                             importedURLs.append(movie.url)
                         }
                     } catch {
-                        viewModel.errorMessage = "从相册导入失败: \(error.localizedDescription)"
+                        viewModel.errorMessage = String(format: String(localized: "Import from album failed: %@"), error.localizedDescription)
                         viewModel.showError = true
                     }
                 }
@@ -228,7 +228,7 @@ struct FileConversionView: View {
 
     private func waveformSection(for file: AudioFileItem) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("波形预览 — \(file.fileName)", systemImage: "waveform")
+            Label(String(format: String(localized: "波形预览 — %@"), file.fileName), systemImage: "waveform")
                 .font(.subheadline)
                 .fontWeight(.medium)
                 .foregroundStyle(.secondary)
@@ -301,7 +301,7 @@ struct FileConversionView: View {
                     .frame(width: 36)
 
                 if let remaining = viewModel.estimatedRemainingSeconds, remaining >= 5 {
-                    Text("剩余 \(formatRemainingTime(remaining))")
+                    Text(String(format: String(localized: "剩余 %@"), formatRemainingTime(remaining)))
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
@@ -338,15 +338,15 @@ struct FileConversionView: View {
 
     // MARK: - 工具方法
 
-    /// 将秒数格式化为「X分Y秒」或「Y秒」
+    /// 将秒数格式化为本地化的「X分Y秒」或「Y秒」
     private func formatRemainingTime(_ seconds: Double) -> String {
         let total = Int(ceil(seconds))
         if total >= 60 {
-            let m = total / 60
-            let s = total % 60
-            return s > 0 ? "\(m)分\(s)秒" : "\(m)分"
+            let m = Int64(total / 60)
+            let s = Int64(total % 60)
+            return s > 0 ? String(format: String(localized: "%lld分%lld秒"), m, s) : String(format: String(localized: "%lld分"), m)
         } else {
-            return "\(total)秒"
+            return String(format: String(localized: "%lld秒"), Int64(total))
         }
     }
 

@@ -64,17 +64,17 @@ enum ProcessingStatus: Equatable {
         return nil
     }
 
-    /// 状态的显示文本
+    /// 状态的显示文本（已本地化）
     var displayText: String {
         switch self {
         case .idle:
-            return "等待处理"
+            return String(localized: "等待处理")
         case .processing(let p):
-            return "处理中 \(Int(p * 100))%"
+            return String(format: String(localized: "处理中 %lld%%"), Int(p * 100))
         case .completed:
-            return "已完成"
+            return String(localized: "已完成")
         case .failed(let msg):
-            return "失败: \(msg)"
+            return String(format: String(localized: "失败: %@"), msg)
         }
     }
 }

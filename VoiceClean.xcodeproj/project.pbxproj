@@ -86,11 +86,12 @@
 				};
 			};
 			buildConfigurationList = 966DFB4A2F3DBC3100A90038 /* Build configuration list for PBXProject "VoiceClean" */;
-			developmentRegion = en;
+			developmentRegion = "zh-Hans";
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				en,
 				Base,
+				en,
+				"zh-Hans",
 			);
 			mainGroup = 966DFB462F3DBC3100A90038;
 			minimizedProjectReferenceProxies = 1;

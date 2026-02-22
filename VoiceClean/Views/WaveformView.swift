@@ -410,7 +410,7 @@ struct WaveformComparisonView: View {
         VStack(spacing: 0) {
             // ── 上方：原始波形 ──
             waveformRow(
-                label: "原始音频",
+                label: String(localized: "原始音频"),
                 icon: "waveform",
                 samples: originalSamples,
                 color: originalColor,
@@ -425,7 +425,7 @@ struct WaveformComparisonView: View {
 
             // ── 下方：降噪后波形（smooth 风格 → 平滑曲线，强调干净感）──
             waveformRow(
-                label: hasProcessedData ? "降噪后" : "降噪后（待处理）",
+                label: hasProcessedData ? String(localized: "降噪后") : String(localized: "降噪后（待处理）"),
                 icon: "waveform.path.ecg",
                 samples: hasProcessedData ? processedSamples : [],
                 color: hasProcessedData ? processedColor : .secondary.opacity(0.3),
