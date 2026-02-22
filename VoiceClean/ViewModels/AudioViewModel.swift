@@ -34,6 +34,12 @@ final class AudioViewModel {
     /// 当前选中的文件 ID（用于详情/波形展示）
     var selectedFileID: UUID?
 
+    /// 当前文件处理开始时间（用于剩余时间预估）
+    var processingStartTime: Date?
+
+    /// 预估剩余时间（秒），进度不足时不展示
+    var estimatedRemainingSeconds: Double?
+
     // MARK: - iOS 文件选择与导出状态
 
     #if os(iOS)
@@ -228,6 +234,8 @@ final class AudioViewModel {
         guard index < audioFiles.count else { return }
 
         audioFiles[index].status = .processing(0)
+        processingStartTime = Date()
+        estimatedRemainingSeconds = nil
 
         let inputURL = audioFiles[index].url
         let fileName = audioFiles[index].fileName
@@ -265,6 +273,7 @@ final class AudioViewModel {
                             DispatchQueue.main.async {
                                 guard fileIndex < self.audioFiles.count else { return }
                                 self.audioFiles[fileIndex].status = .processing(progress)
+                                self.updateEstimatedRemaining(progress: progress)
                             }
                         }
 
@@ -281,11 +290,33 @@ final class AudioViewModel {
             guard index < audioFiles.count else { return }
             audioFiles[index].processedWaveformSamples = result.waveform
             audioFiles[index].status = .completed(result.tempURL)
+            processingStartTime = nil
+            estimatedRemainingSeconds = nil
 
         } catch {
             guard index < audioFiles.count else { return }
             audioFiles[index].status = .failed(error.localizedDescription)
+            processingStartTime = nil
+            estimatedRemainingSeconds = nil
             showErrorMessage("处理 \(audioFiles[index].fileName) 失败: \(error.localizedDescription)")
+        }
+    }
+
+    /// 根据进度更新剩余时间预估（指数平滑减小抖动）
+    private func updateEstimatedRemaining(progress: Double) {
+        guard progress >= 0.02, let start = processingStartTime else {
+            estimatedRemainingSeconds = nil
+            return
+        }
+        let elapsed = Date().timeIntervalSince(start)
+        let raw = elapsed * (1 - progress) / progress
+        let clamped = max(0, raw)
+        // 指数平滑，进度初期波动大时更依赖新值
+        let alpha = 0.3
+        if let prev = estimatedRemainingSeconds {
+            estimatedRemainingSeconds = prev * (1 - alpha) + clamped * alpha
+        } else {
+            estimatedRemainingSeconds = clamped
         }
     }
 

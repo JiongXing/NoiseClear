@@ -299,6 +299,12 @@ struct FileConversionView: View {
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
                     .frame(width: 36)
+
+                if let remaining = viewModel.estimatedRemainingSeconds, remaining >= 5 {
+                    Text("剩余 \(formatRemainingTime(remaining))")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
             }
 
             Spacer()
@@ -327,6 +333,20 @@ struct FileConversionView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(viewModel.isProcessing || !viewModel.hasFilesToProcess)
             }
+        }
+    }
+
+    // MARK: - 工具方法
+
+    /// 将秒数格式化为「X分Y秒」或「Y秒」
+    private func formatRemainingTime(_ seconds: Double) -> String {
+        let total = Int(ceil(seconds))
+        if total >= 60 {
+            let m = total / 60
+            let s = total % 60
+            return s > 0 ? "\(m)分\(s)秒" : "\(m)分"
+        } else {
+            return "\(total)秒"
         }
     }
 

@@ -100,7 +100,7 @@ final class FFmpegDenoiser: Sendable {
             throw FFmpegDenoiserError.processingFailed("无法创建源音频缓冲区")
         }
         try sourceFile.read(into: sourceBuffer)
-        onProgress(0.1)
+        onProgress(0.02)
 
         // 2. 转换为 48kHz 单声道（RNNoise 要求）
         let monoFormat = AVAudioFormat(
@@ -132,7 +132,7 @@ final class FFmpegDenoiser: Sendable {
             return sourceBuffer
         }
         if let convError { throw FFmpegDenoiserError.processingFailed(convError.localizedDescription) }
-        onProgress(0.3)
+        onProgress(0.05)
 
         // 3. RNNoise 逐帧降噪
         guard let monoData = monoBuffer.floatChannelData?[0] else {
@@ -142,7 +142,7 @@ final class FFmpegDenoiser: Sendable {
         let denoisedSamples = try denoiseRawSamples(
             monoData, count: sampleCount, strength: denoiseStrength
         ) { denoiseProgress in
-            onProgress(0.3 + denoiseProgress * 0.6)
+            onProgress(0.05 + denoiseProgress * 0.90)
         }
 
         // 4. 降采样到输出采样率（16kHz）并写入
@@ -250,7 +250,7 @@ final class FFmpegDenoiser: Sendable {
             let floatPtr = UnsafeRawPointer(data).bindMemory(to: Float.self, capacity: floatCount)
             allSamples.append(contentsOf: UnsafeBufferPointer(start: floatPtr, count: floatCount))
         }
-        onProgress(0.15)
+        onProgress(0.03)
 
         guard !allSamples.isEmpty else {
             throw FFmpegDenoiserError.processingFailed("视频音频轨道无有效数据")
@@ -261,10 +261,10 @@ final class FFmpegDenoiser: Sendable {
             try denoiseRawSamples(
                 ptr.baseAddress!, count: allSamples.count, strength: denoiseStrength
             ) { denoiseProgress in
-                onProgress(0.15 + denoiseProgress * 0.35)
+                onProgress(0.03 + denoiseProgress * 0.89)
             }
         }
-        onProgress(0.5)
+        onProgress(0.92)
 
         // --- Phase 2: 视频直通 + 降噪音频 重封装 ---
 
