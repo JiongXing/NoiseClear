@@ -332,29 +332,29 @@ struct WaveformComparisonView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // ── 上方：原始波形 ──
+            // ── 上方：原始波形（bars 风格 → 密集尖峰，强调噪声感）──
             waveformRow(
                 label: "原始音频",
                 icon: "waveform",
                 samples: originalSamples,
                 color: originalColor,
+                style: .bars,
                 trailingContent: { EmptyView() }
             )
 
-            // 分隔线
             Rectangle()
                 .fill(Color.primary.opacity(0.06))
                 .frame(height: 1)
                 .padding(.horizontal, 4)
 
-            // ── 下方：降噪后波形 ──
+            // ── 下方：降噪后波形（smooth 风格 → 平滑曲线，强调干净感）──
             waveformRow(
                 label: hasProcessedData ? "降噪后" : "降噪后（待处理）",
                 icon: "waveform.path.ecg",
                 samples: hasProcessedData ? processedSamples : [],
                 color: hasProcessedData ? processedColor : .secondary.opacity(0.3),
+                style: .smooth,
                 trailingContent: {
-                    // 降噪率指标
                     if hasProcessedData {
                         reductionBadge
                     }
@@ -372,11 +372,11 @@ struct WaveformComparisonView: View {
         icon: String,
         samples: [Float],
         color: Color,
+        style: WaveformView.Style = .bars,
         @ViewBuilder trailingContent: () -> Trailing
     ) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 4) {
-                // 左侧标签
                 HStack(spacing: 3) {
                     Circle()
                         .fill(color.opacity(0.8))
@@ -394,10 +394,10 @@ struct WaveformComparisonView: View {
             }
             .padding(.horizontal, 4)
 
-            // 波形
             WaveformView(
                 samples: samples,
                 color: color,
+                style: style,
                 lineWidth: 1.4,
                 mirrored: true,
                 referenceMaxAmplitude: referenceMax,
