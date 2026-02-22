@@ -408,13 +408,13 @@ struct WaveformComparisonView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // ── 上方：原始波形（bars 风格 → 密集尖峰，强调噪声感）──
+            // ── 上方：原始波形 ──
             waveformRow(
                 label: "原始音频",
                 icon: "waveform",
                 samples: originalSamples,
                 color: originalColor,
-                style: .bars,
+                style: .smooth,
                 trailingContent: { EmptyView() }
             )
 
