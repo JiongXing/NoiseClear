@@ -9,15 +9,26 @@ import SwiftUI
 
 // MARK: - 波形可视化视图
 
-/// 显示音频波形的视图，使用平滑折线包络 + 渐变填充
+/// 显示音频波形的视图，支持平滑曲线和竖线条两种风格
 /// 模仿 Logic Pro / Audacity 等专业音频软件的波形显示风格
 struct WaveformView: View {
+
+    /// 波形绘制风格
+    enum Style {
+        /// 平滑贝塞尔曲线包络 + 渐变填充
+        case smooth
+        /// 竖线条（bar），类似原始示波器风格
+        case bars
+    }
 
     /// 波形采样数据（RMS 值）
     let samples: [Float]
 
     /// 波形颜色
     var color: Color = .accentColor
+
+    /// 绘制风格
+    var style: Style = .bars
 
     /// 包络线条宽度
     var lineWidth: CGFloat = 1.2
@@ -64,82 +75,9 @@ struct WaveformView: View {
                     guard count > 1 else { return }
 
                     let maxAmplitude = referenceMaxAmplitude ?? (samples.max() ?? 1.0)
-                    let stepX = size.width / CGFloat(count - 1)
                     let halfH = size.height / 2 - 1
 
-                    // 1. 计算上下包络点
-                    var upperPoints = [CGPoint]()
-                    var lowerPoints = [CGPoint]()
-                    upperPoints.reserveCapacity(count)
-                    lowerPoints.reserveCapacity(count)
-
-                    for i in 0..<count {
-                        let x = CGFloat(i) * stepX
-                        let n = Self.linearToDbNormalized(samples[i], reference: maxAmplitude)
-                        let offset = n * halfH
-                        upperPoints.append(CGPoint(x: x, y: midY - offset))
-                        lowerPoints.append(CGPoint(x: x, y: midY + offset))
-                    }
-
-                    // 2. 构建填充区域（上包络 → 下包络 → 闭合）
-                    var fillPath = Path()
-                    Self.addSmoothCurve(to: &fillPath, through: upperPoints)
-                    if mirrored {
-                        Self.appendSmoothCurve(to: &fillPath, through: lowerPoints.reversed())
-                    } else {
-                        // 非镜像模式：填充到底部
-                        fillPath.addLine(to: CGPoint(x: upperPoints.last!.x, y: size.height))
-                        fillPath.addLine(to: CGPoint(x: 0, y: size.height))
-                    }
-                    fillPath.closeSubpath()
-
-                    // 3. 渐变填充（较高不透明度，增强视觉效果）
-                    let gradient = Gradient(colors: [
-                        color.opacity(0.45),
-                        color.opacity(0.12),
-                    ])
-                    if mirrored {
-                        // 从上下边缘向中心线渐变（对称）
-                        context.fill(fillPath, with: .linearGradient(
-                            gradient,
-                            startPoint: CGPoint(x: 0, y: midY - halfH),
-                            endPoint: CGPoint(x: 0, y: midY)
-                        ))
-                        // 下半部分镜像渐变
-                        context.fill(fillPath, with: .linearGradient(
-                            gradient,
-                            startPoint: CGPoint(x: 0, y: midY + halfH),
-                            endPoint: CGPoint(x: 0, y: midY)
-                        ))
-                    } else {
-                        context.fill(fillPath, with: .linearGradient(
-                            gradient,
-                            startPoint: CGPoint(x: 0, y: 0),
-                            endPoint: CGPoint(x: 0, y: size.height)
-                        ))
-                    }
-
-                    // 4. 描边上包络线（高不透明度，清晰边缘）
-                    var upperStroke = Path()
-                    Self.addSmoothCurve(to: &upperStroke, through: upperPoints)
-                    context.stroke(
-                        upperStroke,
-                        with: .color(color.opacity(0.95)),
-                        lineWidth: lineWidth
-                    )
-
-                    // 5. 描边下包络线（镜像模式）
-                    if mirrored {
-                        var lowerStroke = Path()
-                        Self.addSmoothCurve(to: &lowerStroke, through: lowerPoints)
-                        context.stroke(
-                            lowerStroke,
-                            with: .color(color.opacity(0.95)),
-                            lineWidth: lineWidth
-                        )
-                    }
-
-                    // 6. 中心参考线
+                    // 中心参考线
                     if showCenterLine {
                         var center = Path()
                         center.move(to: CGPoint(x: 0, y: midY))
@@ -150,8 +88,151 @@ struct WaveformView: View {
                             lineWidth: 0.5
                         )
                     }
+
+                    switch style {
+                    case .bars:
+                        Self.drawBars(
+                            context: &context, size: size, samples: samples,
+                            maxAmplitude: maxAmplitude, midY: midY, halfH: halfH,
+                            mirrored: mirrored, color: color, lineWidth: lineWidth
+                        )
+                    case .smooth:
+                        Self.drawSmooth(
+                            context: &context, size: size, samples: samples,
+                            maxAmplitude: maxAmplitude, midY: midY, halfH: halfH,
+                            mirrored: mirrored, color: color, lineWidth: lineWidth
+                        )
+                    }
                 }
             }
+        }
+    }
+
+    // MARK: - Bar 风格绘制
+
+    /// 竖线条风格：每个采样绘制一根从中线向上下延伸的竖线，视觉上类似示波器 / App 图标
+    private static func drawBars(
+        context: inout GraphicsContext,
+        size: CGSize,
+        samples: [Float],
+        maxAmplitude: Float,
+        midY: CGFloat,
+        halfH: CGFloat,
+        mirrored: Bool,
+        color: Color,
+        lineWidth: CGFloat
+    ) {
+        let count = samples.count
+        let barWidth = max(lineWidth, size.width / CGFloat(count))
+        let gap: CGFloat = max(0.5, barWidth * 0.15)
+        let netBar = barWidth - gap
+
+        let gradient = Gradient(colors: [
+            color.opacity(0.95),
+            color.opacity(0.35),
+        ])
+
+        for i in 0..<count {
+            let x = CGFloat(i) * barWidth + gap / 2
+            let n = linearToDbNormalized(samples[i], reference: maxAmplitude)
+            let offset = max(0.5, n * halfH)
+
+            let rect: CGRect
+            if mirrored {
+                rect = CGRect(x: x, y: midY - offset, width: netBar, height: offset * 2)
+            } else {
+                rect = CGRect(x: x, y: midY - offset, width: netBar, height: offset)
+            }
+
+            let barPath = Path(roundedRect: rect, cornerRadius: netBar * 0.25)
+
+            context.fill(barPath, with: .linearGradient(
+                gradient,
+                startPoint: CGPoint(x: x, y: midY - offset),
+                endPoint: CGPoint(x: x, y: midY + (mirrored ? offset : 0))
+            ))
+        }
+    }
+
+    // MARK: - Smooth 风格绘制
+
+    /// 平滑贝塞尔曲线包络 + 渐变填充
+    private static func drawSmooth(
+        context: inout GraphicsContext,
+        size: CGSize,
+        samples: [Float],
+        maxAmplitude: Float,
+        midY: CGFloat,
+        halfH: CGFloat,
+        mirrored: Bool,
+        color: Color,
+        lineWidth: CGFloat
+    ) {
+        let count = samples.count
+        let stepX = size.width / CGFloat(count - 1)
+
+        var upperPoints = [CGPoint]()
+        var lowerPoints = [CGPoint]()
+        upperPoints.reserveCapacity(count)
+        lowerPoints.reserveCapacity(count)
+
+        for i in 0..<count {
+            let x = CGFloat(i) * stepX
+            let n = linearToDbNormalized(samples[i], reference: maxAmplitude)
+            let offset = n * halfH
+            upperPoints.append(CGPoint(x: x, y: midY - offset))
+            lowerPoints.append(CGPoint(x: x, y: midY + offset))
+        }
+
+        var fillPath = Path()
+        addSmoothCurve(to: &fillPath, through: upperPoints)
+        if mirrored {
+            appendSmoothCurve(to: &fillPath, through: lowerPoints.reversed())
+        } else {
+            fillPath.addLine(to: CGPoint(x: upperPoints.last!.x, y: size.height))
+            fillPath.addLine(to: CGPoint(x: 0, y: size.height))
+        }
+        fillPath.closeSubpath()
+
+        let gradient = Gradient(colors: [
+            color.opacity(0.45),
+            color.opacity(0.12),
+        ])
+        if mirrored {
+            context.fill(fillPath, with: .linearGradient(
+                gradient,
+                startPoint: CGPoint(x: 0, y: midY - halfH),
+                endPoint: CGPoint(x: 0, y: midY)
+            ))
+            context.fill(fillPath, with: .linearGradient(
+                gradient,
+                startPoint: CGPoint(x: 0, y: midY + halfH),
+                endPoint: CGPoint(x: 0, y: midY)
+            ))
+        } else {
+            context.fill(fillPath, with: .linearGradient(
+                gradient,
+                startPoint: CGPoint(x: 0, y: 0),
+                endPoint: CGPoint(x: 0, y: size.height)
+            ))
+        }
+
+        var upperStroke = Path()
+        addSmoothCurve(to: &upperStroke, through: upperPoints)
+        context.stroke(
+            upperStroke,
+            with: .color(color.opacity(0.95)),
+            lineWidth: lineWidth
+        )
+
+        if mirrored {
+            var lowerStroke = Path()
+            addSmoothCurve(to: &lowerStroke, through: lowerPoints)
+            context.stroke(
+                lowerStroke,
+                with: .color(color.opacity(0.95)),
+                lineWidth: lineWidth
+            )
         }
     }
 
