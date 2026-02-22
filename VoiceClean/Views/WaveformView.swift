@@ -19,6 +19,8 @@ struct WaveformView: View {
         case smooth
         /// 竖线条（bar），类似原始示波器风格
         case bars
+        /// 正负交错折线，模拟真实音频振荡波形
+        case zigzag
     }
 
     /// 波形采样数据（RMS 值）
@@ -101,6 +103,12 @@ struct WaveformView: View {
                             context: &context, size: size, samples: samples,
                             maxAmplitude: maxAmplitude, midY: midY, halfH: halfH,
                             mirrored: mirrored, color: color, lineWidth: lineWidth
+                        )
+                    case .zigzag:
+                        Self.drawZigzag(
+                            context: &context, size: size, samples: samples,
+                            maxAmplitude: maxAmplitude, midY: midY, halfH: halfH,
+                            color: color, lineWidth: lineWidth
                         )
                     }
                 }
@@ -234,6 +242,74 @@ struct WaveformView: View {
                 lineWidth: lineWidth
             )
         }
+    }
+
+    // MARK: - Zigzag 风格绘制
+
+    /// 正负交错折线：采样点交替出现在中线上方和下方，直线连接形成锯齿波形
+    private static func drawZigzag(
+        context: inout GraphicsContext,
+        size: CGSize,
+        samples: [Float],
+        maxAmplitude: Float,
+        midY: CGFloat,
+        halfH: CGFloat,
+        color: Color,
+        lineWidth: CGFloat
+    ) {
+        let count = samples.count
+        let stepX = size.width / CGFloat(count - 1)
+
+        var points = [CGPoint]()
+        points.reserveCapacity(count)
+
+        for i in 0..<count {
+            let x = CGFloat(i) * stepX
+            let n = linearToDbNormalized(samples[i], reference: maxAmplitude)
+            let offset = n * halfH
+            let sign: CGFloat = i.isMultiple(of: 2) ? -1 : 1
+            points.append(CGPoint(x: x, y: midY + sign * offset))
+        }
+
+        guard let first = points.first else { return }
+
+        // 折线路径
+        var strokePath = Path()
+        strokePath.move(to: first)
+        for i in 1..<points.count {
+            strokePath.addLine(to: points[i])
+        }
+
+        // 填充区域：折线 → 底部闭合回中线
+        var fillPath = strokePath
+        fillPath.addLine(to: CGPoint(x: points.last!.x, y: midY))
+        fillPath.addLine(to: CGPoint(x: 0, y: midY))
+        fillPath.closeSubpath()
+
+        let gradient = Gradient(colors: [
+            color.opacity(0.40),
+            color.opacity(0.05),
+        ])
+
+        // 上半部分渐变
+        context.fill(fillPath, with: .linearGradient(
+            gradient,
+            startPoint: CGPoint(x: 0, y: midY - halfH),
+            endPoint: CGPoint(x: 0, y: midY)
+        ))
+        // 下半部分渐变
+        context.fill(fillPath, with: .linearGradient(
+            gradient,
+            startPoint: CGPoint(x: 0, y: midY + halfH),
+            endPoint: CGPoint(x: 0, y: midY)
+        ))
+
+        // 描边折线
+        context.stroke(
+            strokePath,
+            with: .color(color.opacity(0.9)),
+            lineWidth: lineWidth
+        )
     }
 
     // MARK: - 平滑曲线构建
@@ -435,8 +511,16 @@ struct WaveformComparisonView: View {
     let processedData: [Float] = sampleData.map { max(0.02, $0 * 0.4) }
 
     return VStack(spacing: 24) {
-        // 单独波形
-        WaveformView(samples: sampleData, color: .blue)
+        // Zigzag 风格
+        WaveformView(samples: sampleData, color: .orange, style: .zigzag)
+            .frame(height: 80)
+
+        // Bars 风格
+        WaveformView(samples: sampleData, color: .blue, style: .bars)
+            .frame(height: 80)
+
+        // Smooth 风格
+        WaveformView(samples: processedData, color: .green, style: .smooth)
             .frame(height: 80)
 
         Divider()
