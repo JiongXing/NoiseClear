@@ -14,7 +14,7 @@ struct VoiceClearApp: App {
             ContentView()
         }
         #if os(macOS)
-        .defaultSize(width: 700, height: 550)
+        .defaultSize(width: 1280, height: 800)
         .windowResizability(.contentSize)
         #endif
     }
