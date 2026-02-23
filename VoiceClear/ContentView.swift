@@ -102,18 +102,10 @@ struct ContentView: View {
             .frame(maxWidth: .infinity)
         }
         .background(Color.platformBackground)
-        .navigationTitle("VoiceClear")
+        .navigationTitle("")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
-        .toolbar {
-            #if os(iOS)
-            ToolbarItem(placement: .principal) {
-                // 隐藏默认标题，由自定义 header 替代
-                EmptyView()
-            }
-            #endif
-        }
     }
 
     // MARK: - 顶部 Logo & 标题
@@ -131,7 +123,7 @@ struct ContentView: View {
                 )
                 .symbolEffect(.pulse, options: .repeating.speed(0.5))
 
-            Text("VoiceClear")
+            Text("Voice Clear")
                 .font(.largeTitle)
                 .fontWeight(.bold)
 

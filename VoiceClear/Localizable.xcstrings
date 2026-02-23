@@ -1,6 +1,9 @@
 {
   "sourceLanguage" : "zh-Hans",
   "strings" : {
+    "" : {
+
+    },
     "%lld 个文件" : {
       "localizations" : {
         "en" : {
@@ -377,7 +380,7 @@
         }
       }
     },
-    "VoiceClear" : {
+    "Voice Clear" : {
 
     },
     "下载中..." : {
