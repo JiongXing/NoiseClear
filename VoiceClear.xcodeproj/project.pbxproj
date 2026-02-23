@@ -271,7 +271,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = NTWSTCY88A;
-				ENABLE_APP_SANDBOX = NO;
+				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -282,6 +282,8 @@
 				);
 				INFOPLIST_FILE = VoiceClear/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Voice Clear";
+				INFOPLIST_KEY_CFBundleExecutable = VoiceClear;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "需要访问相册以保存降噪后的视频";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -295,6 +297,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = VoiceClear/VoiceClear.entitlements;
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -305,7 +308,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				REGISTER_APP_GROUPS = YES;
-				SHALLOW_BUNDLE = YES;
+				SHALLOW_BUNDLE = NO;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SUPPORTS_MACCATALYST = NO;
@@ -329,7 +332,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = NTWSTCY88A;
-				ENABLE_APP_SANDBOX = NO;
+				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -340,6 +343,8 @@
 				);
 				INFOPLIST_FILE = VoiceClear/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Voice Clear";
+				INFOPLIST_KEY_CFBundleExecutable = VoiceClear;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "需要访问相册以保存降噪后的视频";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -353,6 +358,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = VoiceClear/VoiceClear.entitlements;
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -363,7 +369,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				REGISTER_APP_GROUPS = YES;
-				SHALLOW_BUNDLE = YES;
+				SHALLOW_BUNDLE = NO;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SUPPORTS_MACCATALYST = NO;
