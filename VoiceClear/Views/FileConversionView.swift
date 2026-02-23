@@ -259,7 +259,8 @@ struct FileConversionView: View {
                 Text("轻度")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .frame(width: 30)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
 
                 Slider(value: $viewModel.denoiseStrength, in: 0.1...1.0, step: 0.1)
                     .tint(.accentColor)
@@ -268,7 +269,8 @@ struct FileConversionView: View {
                 Text("强力")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .frame(width: 30)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
 
                 Text("\(Int(viewModel.denoiseStrength * 100))%")
                     .font(.caption.monospacedDigit())
@@ -321,14 +323,15 @@ struct FileConversionView: View {
                     .disabled(viewModel.isProcessing)
                 }
 
-                // 开始降噪
+                // 开始降噪（处理中时只显示图标，避免文案换行挤压空间）
                 Button {
                     Task { await viewModel.processAll() }
                 } label: {
-                    Label(
-                        viewModel.isProcessing ? "处理中..." : "开始降噪",
-                        systemImage: viewModel.isProcessing ? "hourglass" : "wand.and.stars"
-                    )
+                    if viewModel.isProcessing {
+                        Image(systemName: "hourglass")
+                    } else {
+                        Label("开始降噪", systemImage: "wand.and.stars")
+                    }
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(viewModel.isProcessing || !viewModel.hasFilesToProcess)

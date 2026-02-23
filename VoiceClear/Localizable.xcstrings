@@ -593,6 +593,7 @@
       }
     },
     "处理中..." : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
