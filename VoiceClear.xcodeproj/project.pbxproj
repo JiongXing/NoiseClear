@@ -10,9 +10,22 @@
 		966DFB4F2F3DBC3100A90038 /* VoiceClear.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VoiceClear.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		96765ED82F4C4BDD008B5ACA /* Exceptions for "VoiceClear" folder in "VoiceClear" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 966DFB4E2F3DBC3100A90038 /* VoiceClear */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		966DFB512F3DBC3100A90038 /* VoiceClear */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				96765ED82F4C4BDD008B5ACA /* Exceptions for "VoiceClear" folder in "VoiceClear" target */,
+			);
 			path = VoiceClear;
 			sourceTree = "<group>";
 		};
@@ -267,6 +280,7 @@
 					"$(SRCROOT)/VoiceClear/Libraries/RNNoise/src",
 					"$(SRCROOT)/VoiceClear/Libraries/RNNoise/include",
 				);
+				INFOPLIST_FILE = VoiceClear/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Voice Clear";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "需要访问相册以保存降噪后的视频";
@@ -301,7 +315,7 @@
 				SWIFT_INCLUDE_PATHS = "$(inherited) $(SRCROOT)/VoiceClear/Libraries/RNNoise/include";
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -324,6 +338,7 @@
 					"$(SRCROOT)/VoiceClear/Libraries/RNNoise/src",
 					"$(SRCROOT)/VoiceClear/Libraries/RNNoise/include",
 				);
+				INFOPLIST_FILE = VoiceClear/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Voice Clear";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "需要访问相册以保存降噪后的视频";
@@ -358,7 +373,7 @@
 				SWIFT_INCLUDE_PATHS = "$(inherited) $(SRCROOT)/VoiceClear/Libraries/RNNoise/include";
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
