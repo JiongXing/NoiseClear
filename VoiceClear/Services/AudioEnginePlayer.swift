@@ -35,6 +35,9 @@ final class AudioEnginePlayer {
 
     /// 用于线程安全更新帧计数
     private let frameLock = NSLock()
+    private let poolLock = NSLock()
+    private var bufferPool: [AVAudioPCMBuffer] = []
+    private let maxPoolSize = 12
 
     /// 是否已完成 setup
     private(set) var isSetUp: Bool = false
@@ -107,16 +110,25 @@ final class AudioEnginePlayer {
     /// buffer 会按顺序排队播放，不会覆盖之前的 buffer。
     /// 调用时不要求在主线程。
     func scheduleBuffer(_ buffer: AVAudioPCMBuffer) {
-        let frameCount = Int64(buffer.frameLength)
+        let scheduledBuffer = borrowBuffer(
+            frameCapacity: buffer.frameCapacity,
+            format: buffer.format
+        ) ?? buffer
+        if scheduledBuffer !== buffer {
+            copyBufferContent(from: buffer, to: scheduledBuffer)
+        }
+
+        let frameCount = Int64(scheduledBuffer.frameLength)
         frameLock.lock()
         pendingFrameCount += frameCount
         frameLock.unlock()
-        playerNode.scheduleBuffer(buffer, completionCallbackType: .dataConsumed) { [weak self] _ in
+        playerNode.scheduleBuffer(scheduledBuffer, completionCallbackType: .dataConsumed) { [weak self] _ in
             guard let self else { return }
             self.frameLock.lock()
             self.scheduledFrameCount += frameCount
             self.pendingFrameCount = max(0, self.pendingFrameCount - frameCount)
             self.frameLock.unlock()
+            self.recycleBuffer(scheduledBuffer)
         }
     }
 
@@ -161,10 +173,44 @@ final class AudioEnginePlayer {
         scheduledFrameCount = 0
         pendingFrameCount = 0
         frameLock.unlock()
+        poolLock.lock()
+        bufferPool.removeAll()
+        poolLock.unlock()
 
         // 断开并重新准备，以便下次 setup
         engine.detach(playerNode)
         isSetUp = false
         format = nil
+    }
+
+    private func borrowBuffer(frameCapacity: AVAudioFrameCount, format: AVAudioFormat) -> AVAudioPCMBuffer? {
+        poolLock.lock()
+        defer { poolLock.unlock() }
+        if let idx = bufferPool.firstIndex(where: {
+            $0.frameCapacity >= frameCapacity && $0.format.channelCount == format.channelCount
+        }) {
+            return bufferPool.remove(at: idx)
+        }
+        return AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCapacity)
+    }
+
+    private func recycleBuffer(_ buffer: AVAudioPCMBuffer) {
+        poolLock.lock()
+        defer { poolLock.unlock() }
+        guard bufferPool.count < maxPoolSize else { return }
+        buffer.frameLength = 0
+        bufferPool.append(buffer)
+    }
+
+    private func copyBufferContent(from source: AVAudioPCMBuffer, to target: AVAudioPCMBuffer) {
+        target.frameLength = source.frameLength
+        guard let srcChannels = source.floatChannelData,
+              let dstChannels = target.floatChannelData
+        else { return }
+        let bytes = Int(source.frameLength) * MemoryLayout<Float>.size
+        let chCount = Int(min(source.format.channelCount, target.format.channelCount))
+        for ch in 0..<chCount {
+            memcpy(dstChannels[ch], srcChannels[ch], bytes)
+        }
     }
 }

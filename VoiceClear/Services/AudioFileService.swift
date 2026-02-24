@@ -73,7 +73,7 @@ enum AudioFileService {
         if kVideoExtensions.contains(ext) {
             // 视频文件使用 AVURLAsset 获取时长
             let asset = AVURLAsset(url: url)
-            let duration = CMTimeGetSeconds(asset.duration)
+            let duration = try AVAssetAsyncLoader.durationSeconds(of: asset)
             guard duration.isFinite && duration > 0 else {
                 throw AudioFileServiceError.invalidDuration
             }
@@ -187,8 +187,11 @@ enum AudioFileService {
     ///   - audioURL: 输出 WAV 文件 URL
     static func extractAudioFromVideo(from videoURL: URL, to audioURL: URL) throws {
         let asset = AVURLAsset(url: videoURL)
-        guard let audioTrack = asset.tracks(withMediaType: .audio).first else {
-            throw AudioFileServiceError.audioExtractionFailed("视频文件中未找到音频轨道")
+        let audioTrack: AVAssetTrack
+        do {
+            audioTrack = try AVAssetAsyncLoader.firstTrack(of: asset, mediaType: .audio)
+        } catch {
+            throw AudioFileServiceError.audioExtractionFailed(error.localizedDescription)
         }
 
         let reader = try AVAssetReader(asset: asset)

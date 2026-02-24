@@ -18,7 +18,7 @@ import Foundation
 /// 3. `stop()` 释放内存缓冲
 ///
 /// 由 PlayerViewModel 管理分段 (chunk) 调用：每段约 4 秒，播放完一段后启动下一段。
-final class StreamingDenoiser {
+final class StreamingDenoiser: StreamingAudioPipeline, @unchecked Sendable {
 
     // MARK: - 常量
 
@@ -79,6 +79,10 @@ final class StreamingDenoiser {
 
     deinit {
         stop()
+    }
+
+    var playbackFormat: AVAudioFormat {
+        Self.outputFormat
     }
 
     // MARK: - 启动流式降噪
@@ -290,8 +294,11 @@ final class StreamingDenoiser {
         maxDuration: TimeInterval?
     ) throws -> AVAudioPCMBuffer {
         let asset = AVURLAsset(url: inputURL)
-        guard let audioTrack = asset.tracks(withMediaType: .audio).first else {
-            throw StreamingDenoiserError.conversionFailed("视频文件中未找到音频轨道")
+        let audioTrack: AVAssetTrack
+        do {
+            audioTrack = try AVAssetAsyncLoader.firstTrack(of: asset, mediaType: .audio)
+        } catch {
+            throw StreamingDenoiserError.conversionFailed(error.localizedDescription)
         }
 
         let reader = try AVAssetReader(asset: asset)
@@ -420,8 +427,11 @@ final class StreamingDenoiser {
         maxDuration: TimeInterval?
     ) throws -> AVAudioPCMBuffer {
         let asset = AVURLAsset(url: inputURL)
-        guard let audioTrack = asset.tracks(withMediaType: .audio).first else {
-            throw StreamingDenoiserError.conversionFailed("视频文件中未找到音频轨道")
+        let audioTrack: AVAssetTrack
+        do {
+            audioTrack = try AVAssetAsyncLoader.firstTrack(of: asset, mediaType: .audio)
+        } catch {
+            throw StreamingDenoiserError.conversionFailed(error.localizedDescription)
         }
 
         let reader = try AVAssetReader(asset: asset)

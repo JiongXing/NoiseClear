@@ -8,6 +8,8 @@ VoiceClear 是一款原生 Apple 平台应用，使用 **RNNoise**（Recurrent N
 
 - **音频降噪** — 支持 MP3、M4A、WAV、AAC、AIFF、FLAC 格式
 - **视频降噪** — 支持 MP4、MOV 格式，视频流直接复制不重编码，仅降噪音频轨道
+- **真流式播放降噪** — AVFoundation 增量解码 + RNNoise 小帧处理，降低首帧等待
+- **在线 URL 播放** — 支持 HTTP/HTTPS MP3/MP4 在线播放，优先流式降噪，失败自动回退
 - **可调节降噪强度** — 10% ~ 100% 自由调节，平衡降噪效果与人声保留
 - **波形可视化** — 实时显示原始与降噪后的音频波形对比，直观感受降噪效果
 - **降噪率指标** — 基于 RMS 能量计算并显示噪声缩减百分比
@@ -26,6 +28,35 @@ VoiceClear 是一款原生 Apple 平台应用，使用 **RNNoise**（Recurrent N
 | 音频处理 | AVFoundation (AVAudioFile / AVAudioConverter / AVAssetReader / AVAssetWriter) |
 | 并发模型 | Swift Concurrency (async/await) + GCD |
 | 状态管理 | @Observable (Observation 框架) |
+
+## 真流式播放架构（AVFoundation）
+
+实时播放链路使用统一流式协议，通过两类实现互为主备：
+
+- `IncrementalStreamingDenoiser`（默认）  
+  - 增量解码小块 PCM（本地文件 / 视频音轨）
+  - RNNoise 按 480 采样点帧持续处理
+  - 处理结果进入队列，`AudioEnginePlayer` 连续调度播放
+- `StreamingDenoiser`（回退）  
+  - 保留原有分段预处理实现，用于兼容和快速回退
+
+在线 URL 使用 `AVPlayerItem` 路径：
+
+- 优先 `AudioTap + RNNoise` 实时处理（真流式）
+- 若不支持或挂载失败，自动降级为在线原声播放
+- 若在线路径不可用，再回退到“下载后本地播放”链路
+
+### 关键可观测指标
+
+- 首帧时间（ms）
+- 流式链路状态（本地流式 / 在线流式 / 回退模式）
+- 回退原因（Tap 不可用、在线初始化失败等）
+
+建议上线门槛：
+
+- 常见设备下首帧时间 < 800ms
+- 连续播放 10 分钟无明显卡顿/掉音
+- 在线路径失败时回退成功率接近 100%
 
 ## 项目结构
 

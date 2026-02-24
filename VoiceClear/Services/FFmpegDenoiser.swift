@@ -205,10 +205,16 @@ final class FFmpegDenoiser: Sendable {
         onProgress: @escaping @Sendable (Double) -> Void
     ) throws {
         let asset = AVURLAsset(url: inputURL)
-        guard let videoTrack = asset.tracks(withMediaType: .video).first else {
+        let videoTrack: AVAssetTrack
+        let audioTrack: AVAssetTrack
+        do {
+            videoTrack = try AVAssetAsyncLoader.firstTrack(of: asset, mediaType: .video)
+        } catch {
             throw FFmpegDenoiserError.noVideoTrack
         }
-        guard let audioTrack = asset.tracks(withMediaType: .audio).first else {
+        do {
+            audioTrack = try AVAssetAsyncLoader.firstTrack(of: asset, mediaType: .audio)
+        } catch {
             throw FFmpegDenoiserError.noAudioTrack
         }
 
@@ -287,10 +293,7 @@ final class FFmpegDenoiser: Sendable {
 
         // 视频输入：直通写入（不重编码，速度极快）
         // MP4 直通模式要求提供 sourceFormatHint，否则 AVAssetWriter 会抛出异常
-        var videoFormatHint: CMFormatDescription?
-        if let firstDesc = videoTrack.formatDescriptions.first {
-            videoFormatHint = (firstDesc as! CMFormatDescription)
-        }
+        let videoFormatHint = try AVAssetAsyncLoader.firstFormatDescription(of: videoTrack)
 
         let videoInput = AVAssetWriterInput(
             mediaType: .video,

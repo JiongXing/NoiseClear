@@ -43,6 +43,10 @@ struct DenoisePlayerView: View {
                     playerControlsSection
                 }
 
+                if viewModel.hasFile {
+                    streamStatusSection
+                }
+
                 // 降噪 & 音量控制
                 if viewModel.hasFile {
                     settingsSection
@@ -425,6 +429,42 @@ struct DenoisePlayerView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 12)
+        .background {
+            RoundedRectangle(cornerRadius: 10)
+                .fill(.ultraThinMaterial)
+        }
+    }
+
+    // MARK: - 流式状态
+
+    private var streamStatusSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Label("播放链路", systemImage: "waveform.path.ecg")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(viewModel.streamStatusText.isEmpty ? "—" : viewModel.streamStatusText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if let startup = viewModel.playbackMetrics.startupLatencyMs {
+                Text(String(format: "首帧延迟 %.0f ms", startup))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(startup > viewModel.releaseGate.startupLatencyMs ? .orange : .secondary)
+            }
+
+            if let reason = viewModel.playbackMetrics.fallbackReason {
+                Text("回退原因: \(reason)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
         .background {
             RoundedRectangle(cornerRadius: 10)
                 .fill(.ultraThinMaterial)
