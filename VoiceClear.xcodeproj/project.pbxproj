@@ -283,6 +283,7 @@
 				);
 				INFOPLIST_FILE = VoiceClear/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Voice Clear";
+				INFOPLIST_KEY_CFBundleName = "Voice Clear";
 				INFOPLIST_KEY_CFBundleExecutable = VoiceClear;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -346,6 +347,7 @@
 				);
 				INFOPLIST_FILE = VoiceClear/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Voice Clear";
+				INFOPLIST_KEY_CFBundleName = "Voice Clear";
 				INFOPLIST_KEY_CFBundleExecutable = VoiceClear;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";

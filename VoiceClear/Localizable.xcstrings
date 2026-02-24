@@ -37,7 +37,20 @@
       }
     },
     "%lld%%" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld%%"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld%%"
+          }
+        }
+      }
     },
     "%lld分" : {
       "localizations" : {
@@ -250,10 +263,36 @@
       }
     },
     "Import from album failed: %@" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import from album failed: %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "从相册导入失败: %@"
+          }
+        }
+      }
     },
     "Online Stream" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Online Stream"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在线流媒体"
+          }
+        }
+      }
     },
     "Playback failed: %@" : {
       "localizations" : {
@@ -320,7 +359,20 @@
       }
     },
     "Remote player unavailable" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remote player unavailable"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "远程播放器不可用"
+          }
+        }
+      }
     },
     "Select audio or video files" : {
       "localizations" : {
@@ -387,7 +439,20 @@
       }
     },
     "Voice Clear" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voice Clear"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voice Clear"
+          }
+        }
+      }
     },
     "下载中..." : {
       "localizations" : {
@@ -519,7 +584,20 @@
       }
     },
     "加载完成后将显示播放与降噪控制面板" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Playback and denoise controls will appear after loading"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "加载完成后将显示播放与降噪控制面板"
+          }
+        }
+      }
     },
     "原始播放中" : {
       "localizations" : {
@@ -586,22 +664,100 @@
       }
     },
     "回退：下载后播放" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fallback: download then play"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "回退：下载后播放"
+          }
+        }
+      }
     },
     "回退原因: %@" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fallback reason: %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "回退原因: %@"
+          }
+        }
+      }
     },
     "在线真流式（原声）" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "True streaming (original audio)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在线真流式（原声）"
+          }
+        }
+      }
     },
     "在线真流式（降噪）" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "True streaming (denoised)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在线真流式（降噪）"
+          }
+        }
+      }
     },
     "在线资源不存在或已过期，请更换可访问的音频地址" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Online resource not found or expired. Please use an accessible audio URL"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在线资源不存在或已过期，请更换可访问的音频地址"
+          }
+        }
+      }
     },
     "在线资源加载中..." : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading online resource..."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在线资源加载中..."
+          }
+        }
+      }
     },
     "处理中 %lld%%" : {
       "localizations" : {
@@ -845,7 +1001,20 @@
       }
     },
     "播放链路" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Playback path"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "播放链路"
+          }
+        }
+      }
     },
     "支持 MP3、M4A、WAV、AAC、FLAC、MP4、MOV 格式" : {
       "localizations" : {
@@ -944,7 +1113,20 @@
       }
     },
     "本地文件模式" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Local file mode"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "本地文件模式"
+          }
+        }
+      }
     },
     "正在从相册导入..." : {
       "localizations" : {
@@ -963,7 +1145,20 @@
       }
     },
     "正在加载在线资源..." : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading online resource..."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在加载在线资源..."
+          }
+        }
+      }
     },
     "波形预览 — %@" : {
       "localizations" : {
@@ -1222,10 +1417,36 @@
       }
     },
     "降噪后" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Denoised"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "降噪后"
+          }
+        }
+      }
     },
     "降噪后（待处理）" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Denoised (pending)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "降噪后（待处理）"
+          }
+        }
+      }
     },
     "降噪强度" : {
       "localizations" : {
@@ -1308,7 +1529,20 @@
       }
     },
     "首帧偏慢，建议回退策略" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "First frame is slow, fallback is recommended"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "首帧偏慢，建议回退策略"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
