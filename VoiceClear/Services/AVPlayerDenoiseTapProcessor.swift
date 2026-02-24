@@ -42,17 +42,44 @@ final class AVPlayerDenoiseTapProcessor {
         stateLock.unlock()
     }
 
-    func attach(to item: AVPlayerItem) throws {
-        let audioTrack = try AVAssetAsyncLoader.firstTrack(of: item.asset, mediaType: .audio)
+    func attach(to item: AVPlayerItem) async throws {
+        let tracks: [AVAssetTrack]
+        do {
+            tracks = try await item.asset.loadTracks(withMediaType: .audio)
+        } catch {
+            throw error
+        }
+        guard let audioTrack = tracks.first else {
+            throw NSError(domain: "AVPlayerDenoiseTapProcessor", code: -1, userInfo: [
+                NSLocalizedDescriptionKey: "未找到可处理的音轨"
+            ])
+        }
 
         var callbacks = MTAudioProcessingTapCallbacks(
             version: kMTAudioProcessingTapCallbacksVersion_0,
             clientInfo: UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque()),
-            init: tapInit,
-            finalize: tapFinalize,
-            prepare: tapPrepare,
-            unprepare: tapUnprepare,
-            process: tapProcess
+            init: { tap, clientInfo, tapStorageOut in
+                tapInit(tap: tap, clientInfo: clientInfo, tapStorageOut: tapStorageOut)
+            },
+            finalize: { tap in
+                tapFinalize(tap: tap)
+            },
+            prepare: { tap, maxFrames, processingFormat in
+                tapPrepare(tap: tap, maxFrames: maxFrames, processingFormat: processingFormat)
+            },
+            unprepare: { tap in
+                tapUnprepare(tap: tap)
+            },
+            process: { tap, numberFrames, flags, bufferListInOut, numberFramesOut, flagsOut in
+                tapProcess(
+                    tap: tap,
+                    numberFrames: numberFrames,
+                    flags: flags,
+                    bufferListInOut: bufferListInOut,
+                    numberFramesOut: numberFramesOut,
+                    flagsOut: flagsOut
+                )
+            }
         )
         var tap: MTAudioProcessingTap?
         let status = MTAudioProcessingTapCreate(

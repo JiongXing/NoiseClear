@@ -165,9 +165,17 @@ final class PlayerViewModel {
         }
 
         isDownloading = true
+        streamStatusText = String(localized: "在线资源加载中...")
+        defer { isDownloading = false }
         do {
             try await prepareRemoteStream(url: url)
         } catch {
+            let nsError = error as NSError
+            if nsError.domain == NSURLErrorDomain, nsError.code == NSURLErrorFileDoesNotExist {
+                showErrorMessage(String(localized: "在线资源不存在或已过期，请更换可访问的音频地址"))
+                clearLoadedMediaState()
+                return
+            }
             // 回退到旧模式：下载后本地播放，保障可用性。
             do {
                 playbackMetrics.fallbackReason = "remote_stream_prepare_failed"
@@ -176,9 +184,9 @@ final class PlayerViewModel {
                 await loadFile(url: localURL)
             } catch {
                 showErrorMessage(String(format: String(localized: "Download failed: %@"), error.localizedDescription))
+                clearLoadedMediaState()
             }
         }
-        isDownloading = false
     }
 
     private func prepareRemoteStream(url: URL) async throws {
@@ -205,10 +213,14 @@ final class PlayerViewModel {
                     strength: Float(denoiseStrength),
                     enabled: true
                 )
-                try tap.attach(to: item)
+                try await tap.attach(to: item)
                 remoteTapProcessor = tap
                 streamStatusText = String(localized: "在线真流式（降噪）")
             } catch {
+                let nsError = error as NSError
+                if nsError.domain == NSURLErrorDomain, nsError.code == NSURLErrorFileDoesNotExist {
+                    throw error
+                }
                 remoteTapProcessor = nil
                 playbackMetrics.usedPassthrough = true
                 playbackMetrics.fallbackReason = "audio_tap_attach_failed"
@@ -220,7 +232,16 @@ final class PlayerViewModel {
         }
 
         avPlayer = player
-        let seconds = (try? AVAssetAsyncLoader.durationSeconds(of: item.asset)) ?? 0
+        let seconds: TimeInterval
+        if #available(iOS 16.0, macOS 13.0, *) {
+            if let loaded = try? await item.asset.load(.duration) {
+                seconds = loaded.seconds
+            } else {
+                seconds = 0
+            }
+        } else {
+            seconds = item.asset.duration.seconds
+        }
         duration = seconds.isFinite && seconds > 0 ? seconds : 0
     }
 
@@ -595,6 +616,26 @@ final class PlayerViewModel {
     private func showErrorMessage(_ message: String) {
         errorMessage = message
         showError = true
+    }
+
+    /// 仅清理“已加载媒体”相关状态，保留用户输入和错误提示。
+    private func clearLoadedMediaState() {
+        currentFile = nil
+        fileName = ""
+        isVideo = false
+        duration = 0
+        currentTime = 0
+        seekOffset = 0
+        isFinished = false
+        allDataRead = false
+        isRemoteStream = false
+        playbackPath = .localEngine
+        streamStatusText = ""
+        remoteTapProcessor = nil
+        avPlayer = nil
+        denoiser = nil
+        audioPlayer = nil
+        readLoopController.setRunning(false)
     }
 
     // MARK: - Computed

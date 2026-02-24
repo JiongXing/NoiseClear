@@ -39,16 +39,16 @@ struct DenoisePlayerView: View {
                 mediaDisplayArea
 
                 // 播放控制条
-                if viewModel.hasFile {
+                if shouldShowLoadedPanels {
                     playerControlsSection
                 }
 
-                if viewModel.hasFile {
+                if shouldShowLoadedPanels {
                     streamStatusSection
                 }
 
                 // 降噪 & 音量控制
-                if viewModel.hasFile {
+                if shouldShowLoadedPanels {
                     settingsSection
                 }
             }
@@ -57,7 +57,7 @@ struct DenoisePlayerView: View {
         }
         .background(Color.platformBackground)
         .toolbar {
-            if viewModel.hasFile {
+            if shouldShowLoadedPanels {
                 ToolbarItem(placement: .automatic) {
                     HStack(spacing: 8) {
                         Image(systemName: viewModel.isVideo ? "film" : "music.note")
@@ -140,7 +140,9 @@ struct DenoisePlayerView: View {
 
     @ViewBuilder
     private var mediaDisplayArea: some View {
-        if let _ = viewModel.currentFile {
+        if viewModel.isDownloading {
+            remoteLoadingArea
+        } else if let _ = viewModel.currentFile {
             // 已加载文件
             if viewModel.isVideo, let player = viewModel.avPlayer {
                 // 视频文件：显示视频画面
@@ -241,6 +243,33 @@ struct DenoisePlayerView: View {
                     .controlSize(.small)
                 }
             }
+        }
+        .frame(minHeight: 200, maxHeight: 280)
+    }
+
+    /// 在线 URL 资源加载中的占位区域
+    private var remoteLoadingArea: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 12)
+                .fill(.ultraThinMaterial)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12)
+                        .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+                }
+
+            VStack(spacing: 12) {
+                ProgressView()
+                    .controlSize(.large)
+
+                Text("正在加载在线资源...")
+                    .font(.headline)
+
+                Text("加载完成后将显示播放与降噪控制面板")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 20)
         }
         .frame(minHeight: 200, maxHeight: 280)
     }
@@ -586,6 +615,11 @@ struct DenoisePlayerView: View {
         } else {
             return "speaker.wave.3.fill"
         }
+    }
+
+    /// 仅在媒体加载完成后展示控制面板，避免加载中闪现旧/无效状态。
+    private var shouldShowLoadedPanels: Bool {
+        viewModel.hasFile && !viewModel.isDownloading
     }
 
     // MARK: - 导入中遮罩
