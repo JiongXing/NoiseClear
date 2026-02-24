@@ -252,6 +252,9 @@
     "Import from album failed: %@" : {
 
     },
+    "Online Stream" : {
+
+    },
     "Playback failed: %@" : {
       "localizations" : {
         "en" : {
@@ -315,6 +318,9 @@
           }
         }
       }
+    },
+    "Remote player unavailable" : {
+
     },
     "Select audio or video files" : {
       "localizations" : {
@@ -576,6 +582,18 @@
         }
       }
     },
+    "回退：下载后播放" : {
+
+    },
+    "回退原因: %@" : {
+
+    },
+    "在线真流式（原声）" : {
+
+    },
+    "在线真流式（降噪）" : {
+
+    },
     "处理中 %lld%%" : {
       "localizations" : {
         "en" : {
@@ -817,6 +835,9 @@
         }
       }
     },
+    "播放链路" : {
+
+    },
     "支持 MP3、M4A、WAV、AAC、FLAC、MP4、MOV 格式" : {
       "localizations" : {
         "en" : {
@@ -912,6 +933,9 @@
           }
         }
       }
+    },
+    "本地文件模式" : {
+
     },
     "正在从相册导入..." : {
       "localizations" : {
@@ -1270,6 +1294,9 @@
           }
         }
       }
+    },
+    "首帧偏慢，建议回退策略" : {
+
     }
   },
   "version" : "1.0"

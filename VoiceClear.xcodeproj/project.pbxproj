@@ -308,7 +308,9 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				REGISTER_APP_GROUPS = YES;
-				SHALLOW_BUNDLE = NO;
+				"SHALLOW_BUNDLE[sdk=iphoneos*]" = YES;
+				"SHALLOW_BUNDLE[sdk=iphonesimulator*]" = YES;
+				"SHALLOW_BUNDLE[sdk=macosx*]" = NO;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SUPPORTS_MACCATALYST = NO;
@@ -369,7 +371,9 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				REGISTER_APP_GROUPS = YES;
-				SHALLOW_BUNDLE = NO;
+				"SHALLOW_BUNDLE[sdk=iphoneos*]" = YES;
+				"SHALLOW_BUNDLE[sdk=iphonesimulator*]" = YES;
+				"SHALLOW_BUNDLE[sdk=macosx*]" = NO;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SUPPORTS_MACCATALYST = NO;
