@@ -18,13 +18,8 @@ final class AVPlayerDenoiseTapProcessor {
 
     private var inputFrame = [Float](repeating: 0, count: RNNoiseProcessor.frameSize)
     private var outputFrame = [Float](repeating: 0, count: RNNoiseProcessor.frameSize)
-    private var metricLogCount = 0
     private var tapSampleRate: Double = 0
-    private var tapChannelCount: UInt32 = 0
-    private var sampleRateFallbackLogged = false
-    private var popMetricLogCount = 0
     private var previousOutputTail: Float = 0
-    private var rnPadMetricLogCount = 0
     private var rnPendingSamples: [Float] = []
 
     private var sourceFormat: AVAudioFormat?
@@ -183,57 +178,8 @@ final class AVPlayerDenoiseTapProcessor {
             }
         }
 
-        if metricLogCount < 3 {
-            metricLogCount += 1
-            // #region agent log
-            DebugRuntimeLogger.log(
-                runId: "run-voice-quality",
-                hypothesisId: "H2",
-                location: "AVPlayerDenoiseTapProcessor.processAudioList",
-                message: "tap denoise metrics",
-                data: [
-                    "bufferCount": buffers.count,
-                    "firstBufferChannels": buffers.first?.mNumberChannels ?? 0,
-                    "tapSampleRate": tapSampleRate,
-                    "tapChannelCount": tapChannelCount,
-                    "frameCount": frameCount,
-                    "strength": localStrength,
-                    "inputRMS": rms(of: mono),
-                    "outputRMS": rms(of: denoised),
-                    "inputPeak": peak(of: mono),
-                    "outputPeak": peak(of: denoised)
-                ]
-            )
-            // #endregion
-        }
-
         if !denoised.isEmpty {
             applyBoundarySmoothingIfNeeded(&denoised)
-        }
-
-        if popMetricLogCount < 8, !denoised.isEmpty {
-            let head = denoised[0]
-            let tail = denoised[denoised.count - 1]
-            let boundaryJump = abs(head - previousOutputTail)
-            let maxStep = maxNeighborStep(in: denoised)
-            popMetricLogCount += 1
-            // #region agent log
-            DebugRuntimeLogger.log(
-                runId: "run-pop-debug",
-                hypothesisId: "P1",
-                location: "AVPlayerDenoiseTapProcessor.processAudioList",
-                message: "pop boundary metrics",
-                data: [
-                    "tapSampleRate": tapSampleRate,
-                    "frameCount": frameCount,
-                    "boundaryJump": boundaryJump,
-                    "maxNeighborStep": maxStep,
-                    "head": head,
-                    "tail": tail,
-                    "strength": localStrength
-                ]
-            )
-            // #endregion
         }
         if let tail = denoised.last {
             previousOutputTail = tail
@@ -258,22 +204,11 @@ final class AVPlayerDenoiseTapProcessor {
         }
     }
 
-    private func rms(of samples: [Float]) -> Float {
-        guard !samples.isEmpty else { return 0 }
-        let sum = samples.reduce(Float(0)) { $0 + $1 * $1 }
-        return sqrt(sum / Float(samples.count))
-    }
-
-    private func peak(of samples: [Float]) -> Float {
-        samples.reduce(Float(0)) { max($0, abs($1)) }
-    }
-
     fileprivate func handleTapPrepare(
         maxFrames: CMItemCount,
         processingFormat: UnsafePointer<AudioStreamBasicDescription>
     ) {
         tapSampleRate = processingFormat.pointee.mSampleRate
-        tapChannelCount = processingFormat.pointee.mChannelsPerFrame
         sourceFormat = AVAudioFormat(
             commonFormat: .pcmFormatFloat32,
             sampleRate: tapSampleRate,
@@ -287,27 +222,8 @@ final class AVPlayerDenoiseTapProcessor {
             toRNConverter = nil
             fromRNConverter = nil
         }
-        sampleRateFallbackLogged = false
-        popMetricLogCount = 0
         previousOutputTail = 0
-        rnPadMetricLogCount = 0
         rnPendingSamples.removeAll(keepingCapacity: true)
-        // #region agent log
-        DebugRuntimeLogger.log(
-            runId: "run-voice-quality",
-            hypothesisId: "H5",
-            location: "AVPlayerDenoiseTapProcessor.tapPrepare",
-            message: "tap processing format",
-            data: [
-                "sampleRate": tapSampleRate,
-                "channels": tapChannelCount,
-                "maxFrames": maxFrames,
-                "formatID": processingFormat.pointee.mFormatID,
-                "formatFlags": processingFormat.pointee.mFormatFlags,
-                "bytesPerFrame": processingFormat.pointee.mBytesPerFrame
-            ]
-        )
-        // #endregion
     }
 
     private func processResampled(
@@ -319,22 +235,6 @@ final class AVPlayerDenoiseTapProcessor {
               let toRNConverter,
               let fromRNConverter
         else { return mono }
-
-        if !sampleRateFallbackLogged {
-            sampleRateFallbackLogged = true
-            // #region agent log
-            DebugRuntimeLogger.log(
-                runId: "run-voice-quality",
-                hypothesisId: "H5",
-                location: "AVPlayerDenoiseTapProcessor.processResampled",
-                message: "resample path enabled for tap denoise",
-                data: [
-                    "sourceSampleRate": sourceFormat.sampleRate,
-                    "targetSampleRate": RNNoiseProcessor.sampleRate
-                ]
-            )
-            // #endregion
-        }
 
         guard let srcBuffer = AVAudioPCMBuffer(
             pcmFormat: sourceFormat,
@@ -368,8 +268,6 @@ final class AVPlayerDenoiseTapProcessor {
         var rnProcessed = [Float](repeating: 0, count: processableCount)
         let scale: Float = 32_768
         let invScale: Float = 1.0 / 32_768
-        let partialFrame = carryCount % RNNoiseProcessor.frameSize
-        let paddedSamples = 0
         var offset = 0
         while offset < processableCount {
             for i in 0..<RNNoiseProcessor.frameSize { inputFrame[i] = rnInput[offset + i] * scale }
@@ -384,25 +282,6 @@ final class AVPlayerDenoiseTapProcessor {
             rnPendingSamples = Array(rnInput.suffix(carryCount))
         } else {
             rnPendingSamples.removeAll(keepingCapacity: true)
-        }
-        if rnPadMetricLogCount < 40 {
-            rnPadMetricLogCount += 1
-            // #region agent log
-            DebugRuntimeLogger.log(
-                runId: "run-discontinuity-debug",
-                hypothesisId: "P7",
-                location: "AVPlayerDenoiseTapProcessor.processResampled",
-                message: "rn frame padding metrics",
-                data: [
-                    "rnCount": rnCount,
-                    "frameSize": RNNoiseProcessor.frameSize,
-                    "partialFrame": partialFrame,
-                    "paddedSamples": paddedSamples,
-                    "carryIn": rnInput.count - rnCount,
-                    "carryOut": carryCount
-                ]
-            )
-            // #endregion
         }
 
         guard let rnOutBuffer = AVAudioPCMBuffer(
@@ -422,20 +301,6 @@ final class AVPlayerDenoiseTapProcessor {
 
         let downFrameLength = Int(dstBuffer.frameLength)
         let outCount = min(downFrameLength, mono.count)
-        // #region agent log
-        DebugRuntimeLogger.log(
-            runId: "run-pop-debug",
-            hypothesisId: "P2",
-            location: "AVPlayerDenoiseTapProcessor.processResampled",
-            message: "resample output sizing",
-            data: [
-                "inputCount": mono.count,
-                "rnCount": rnCount,
-                "downFrameLength": downFrameLength,
-                "outCount": outCount
-            ]
-        )
-        // #endregion
         if outCount == 0 { return mono }
         let raw = Array(UnsafeBufferPointer(start: dstData, count: downFrameLength))
         return remapSamplesToFixedCount(raw, targetCount: mono.count)
@@ -463,16 +328,6 @@ final class AVPlayerDenoiseTapProcessor {
         }
         if err != nil { return nil }
         return output
-    }
-
-    private func maxNeighborStep(in samples: [Float]) -> Float {
-        guard samples.count > 1 else { return 0 }
-        var maxStep: Float = 0
-        for i in 1..<samples.count {
-            let step = abs(samples[i] - samples[i - 1])
-            if step > maxStep { maxStep = step }
-        }
-        return maxStep
     }
 
     private func remapSamplesToFixedCount(_ samples: [Float], targetCount: Int) -> [Float] {
@@ -508,19 +363,6 @@ final class AVPlayerDenoiseTapProcessor {
             let target = samples[i]
             samples[i] = from * (1 - t) + target * t
         }
-
-        // #region agent log
-        DebugRuntimeLogger.log(
-            runId: "run-pop-debug",
-            hypothesisId: "P3",
-            location: "AVPlayerDenoiseTapProcessor.applyBoundarySmoothingIfNeeded",
-            message: "boundary smoothing applied",
-            data: [
-                "jump": jump,
-                "fadeCount": fadeCount
-            ]
-        )
-        // #endregion
     }
 }
 

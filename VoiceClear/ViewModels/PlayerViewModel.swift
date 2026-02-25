@@ -107,8 +107,6 @@ final class PlayerViewModel {
     private var seekOffset: TimeInterval = 0
     private var lastDriftCorrectionTime: TimeInterval = 0
     private var isRemoteStream = false
-    private var remoteBufferMetricLogCount = 0
-    private var remoteStallObserver: NSObjectProtocol?
 
     private let maxBufferedDuration: TimeInterval = 2.0
     private let readLoopController = ReadLoopController()
@@ -208,29 +206,6 @@ final class PlayerViewModel {
         let player = AVPlayer(playerItem: item)
         player.volume = Float(volume)
         player.automaticallyWaitsToMinimizeStalling = true
-        remoteBufferMetricLogCount = 0
-        if let token = remoteStallObserver {
-            NotificationCenter.default.removeObserver(token)
-            remoteStallObserver = nil
-        }
-        remoteStallObserver = NotificationCenter.default.addObserver(
-            forName: .AVPlayerItemPlaybackStalled,
-            object: item,
-            queue: .main
-        ) { _ in
-            // #region agent log
-            DebugRuntimeLogger.log(
-                runId: "run-network-debug",
-                hypothesisId: "P6",
-                location: "PlayerViewModel.prepareRemoteStream",
-                message: "remote playback stalled notification",
-                data: [
-                    "streamStatusText": self.streamStatusText,
-                    "denoiseEnabled": self.denoiseEnabled
-                ]
-            )
-            // #endregion
-        }
 
         if denoiseEnabled {
             do {
@@ -294,21 +269,6 @@ final class PlayerViewModel {
         playbackMetrics.firstFrameAt = nil
         playbackMetrics.startupLatencyMs = nil
         isLoading = true
-        // #region agent log
-        DebugRuntimeLogger.log(
-            runId: "run-voice-quality",
-            hypothesisId: "H1",
-            location: "PlayerViewModel.play",
-            message: "play invoked with current denoise config",
-            data: [
-                "isRemoteStream": isRemoteStream,
-                "denoiseEnabled": denoiseEnabled,
-                "denoiseStrength": denoiseStrength,
-                "isVideo": isVideo
-            ]
-        )
-        // #endregion
-
         if isRemoteStream {
             await playRemoteStream()
             return
@@ -431,10 +391,6 @@ final class PlayerViewModel {
         denoiser = nil
         remoteTapProcessor = nil
         readQueue = nil
-        if let token = remoteStallObserver {
-            NotificationCenter.default.removeObserver(token)
-            remoteStallObserver = nil
-        }
 
         avPlayer?.pause()
         avPlayer?.seek(to: .zero)
@@ -540,25 +496,6 @@ final class PlayerViewModel {
                 case .remoteAVPlayer:
                     if let avPlayer = self.avPlayer {
                         self.currentTime = max(0, avPlayer.currentTime().seconds)
-                        if self.remoteBufferMetricLogCount < 20, let item = avPlayer.currentItem {
-                            self.remoteBufferMetricLogCount += 1
-                            // #region agent log
-                            DebugRuntimeLogger.log(
-                                runId: "run-network-debug",
-                                hypothesisId: "P6",
-                                location: "PlayerViewModel.startTimeUpdateTimer",
-                                message: "remote buffer heartbeat",
-                                data: [
-                                    "currentTime": self.currentTime,
-                                    "isPlaybackLikelyToKeepUp": item.isPlaybackLikelyToKeepUp,
-                                    "isPlaybackBufferEmpty": item.isPlaybackBufferEmpty,
-                                    "isPlaybackBufferFull": item.isPlaybackBufferFull,
-                                    "loadedSeconds": Self.loadedBufferedSeconds(for: item),
-                                    "playerRate": avPlayer.rate
-                                ]
-                            )
-                            // #endregion
-                        }
                         let total = avPlayer.currentItem?.duration.seconds ?? self.duration
                         if total.isFinite && total > 0 {
                             self.duration = total
@@ -621,10 +558,6 @@ final class PlayerViewModel {
         denoiser = nil
         readQueue = nil
         remoteTapProcessor = nil
-        if let token = remoteStallObserver {
-            NotificationCenter.default.removeObserver(token)
-            remoteStallObserver = nil
-        }
 
         DispatchQueue.global(qos: .utility).async {
             playerToStop?.stop()
@@ -723,13 +656,5 @@ final class PlayerViewModel {
             return String(format: "%d:%02d:%02d", hours, minutes, seconds)
         }
         return String(format: "%d:%02d", minutes, seconds)
-    }
-
-    private static func loadedBufferedSeconds(for item: AVPlayerItem) -> TimeInterval {
-        guard let range = item.loadedTimeRanges.first?.timeRangeValue else { return 0 }
-        let start = range.start.seconds
-        let duration = range.duration.seconds
-        guard start.isFinite, duration.isFinite else { return 0 }
-        return max(0, duration)
     }
 }
