@@ -34,8 +34,6 @@ playground.xcworkspace
 
 
 # ===== IDE / Editor =====
-## Cursor / VS Code
-.cursor/
 
 ## JetBrains
 .idea/
