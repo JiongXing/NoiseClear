@@ -9,6 +9,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 #if os(iOS)
 import PhotosUI
+import UIKit
 #endif
 
 // MARK: - 降噪播放页面
@@ -54,7 +55,21 @@ struct DenoisePlayerView: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
+            #if os(iOS)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                dismissKeyboard()
+            }
+            #endif
         }
+        #if os(iOS)
+        .contentShape(Rectangle())
+        .simultaneousGesture(
+            TapGesture().onEnded {
+                dismissKeyboard()
+            }
+        )
+        #endif
         .background(Color.platformBackground)
         .toolbar {
             if shouldShowLoadedPanels {
@@ -371,6 +386,18 @@ struct DenoisePlayerView: View {
         }
         #endif
     }
+
+    #if os(iOS)
+    /// 点击页面空白区域时收起键盘
+    private func dismissKeyboard() {
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
+    }
+    #endif
 
     // MARK: - 播放控制条
 
