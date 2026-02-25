@@ -2,7 +2,7 @@
 
 > 基于 RNNoise 神经网络的音视频人声降噪工具，支持 macOS 和 iOS 双平台。
 
-VoiceClear 是一款原生 Apple 平台应用，使用 **RNNoise**（Recurrent Neural Network Noise Suppression）进行语音降噪。项目目前采用 **AVFoundation 真流式 + 多级回退** 技术方案，在低延迟播放、在线可用性与兼容性之间做平衡。
+VoiceClear 是一款原生 Apple 平台应用，使用 **RNNoise**（Recurrent Neural Network Noise Suppression）进行语音降噪。项目目前采用 **AVFoundation 真流式 + 多级回退** 技术方案，在低延迟播放、在线可用性与兼容性之间做平衡。当前版本中，在线流式降噪已达到可用状态，并针对“音爆/不连续感”完成了关键修复（重采样长度对齐、跨回调连续帧处理、边界平滑）。
 
 详细技术文档见：`docs/TECHNICAL_SOLUTION.md`
 
@@ -10,7 +10,7 @@ VoiceClear 是一款原生 Apple 平台应用，使用 **RNNoise**（Recurrent N
 
 - **音频降噪**：支持 MP3、M4A、WAV、AAC、AIFF、FLAC
 - **视频降噪**：支持 MP4、MOV（视频轨直通，处理音轨）
-- **真流式播放降噪**：增量解码 + RNNoise 小帧处理
+- **真流式播放降噪**：增量解码 + RNNoise 小帧处理（已做连续性优化）
 - **在线 URL 播放**：HTTP/HTTPS MP3/MP4，优先实时降噪
 - **多级回退**：Tap 失败 -> 在线原声 -> 下载后本地播放
 - **强度可调**：10% ~ 100%
@@ -26,13 +26,23 @@ VoiceClear 是一款原生 Apple 平台应用，使用 **RNNoise**（Recurrent N
 - 输出到 `AudioEnginePlayer` 调度播放
 - 目标：降低首帧等待、降低内存峰值
 
-### 2) 在线播放主路径
+### 2) 在线播放主路径（当前可用）
 
 `AVPlayerItem + MTAudioProcessingTap`
 
 - 在线媒体直接播放
-- 在音轨处理回调中执行 RNNoise
+- 在音轨处理回调中执行 RNNoise（含重采样对齐 + 跨回调连续帧处理）
 - 目标：实现在线“边播边降噪”
+
+### 2.1) 在线流式音质说明（重要）
+
+- 在线流式与离线整文件降噪在理论上不完全等价：
+  - 流式路径受实时性约束，无法像离线处理一样使用完整全局上下文
+  - 在线路径还需处理回调块边界、缓冲和时序抖动
+- 因此实际效果通常为：**流式可接近离线，但离线仍是音质上限**
+- 产品策略建议：
+  - 低延迟优先：使用在线流式降噪
+  - 最高音质优先：使用下载后本地（离线）降噪/播放
 
 ### 3) 可用性回退路径
 
@@ -63,7 +73,7 @@ fallback --> localFile[DownloadThenLocalPlay]
 
 ## 项目结构（核心）
 
-```
+```text
 VoiceClear/
 ├── VoiceClearApp.swift
 ├── ContentView.swift
@@ -107,15 +117,13 @@ VoiceClear/
 
 ## 技术栈
 
-| 分类 | 技术 |
-|------|------|
-| 平台 | macOS / iOS (SwiftUI) |
-| 语言 | Swift 5（兼容 Swift 6 并发检查） |
-| 架构 | MVVM |
-| 降噪引擎 | RNNoise C 库（编译进二进制） |
-| 音视频处理 | AVFoundation + AVPlayerItem AudioTap |
-| 并发模型 | Swift Concurrency + GCD |
-| 状态管理 | Observation (`@Observable`) |
+- 平台：macOS / iOS (SwiftUI)
+- 语言：Swift 5（兼容 Swift 6 并发检查）
+- 架构：MVVM
+- 降噪引擎：RNNoise C 库（编译进二进制）
+- 音视频处理：AVFoundation + AVPlayerItem AudioTap
+- 并发模型：Swift Concurrency + GCD
+- 状态管理：Observation (`@Observable`)
 
 ## 运行环境
 
@@ -124,19 +132,20 @@ VoiceClear/
 
 ## 设计亮点
 
-| 决策 | 说明 |
-|------|------|
-| 真流式优先 | 本地增量流式 + 在线实时处理 |
-| 多级回退 | 优先可用性，失败自动降级 |
-| Swift 6 兼容 | 处理 Sendable、主线程隔离、异步等待告警 |
-| 视频轨直通 | 保持画质并减少重编码开销 |
+| 决策         | 说明                                         |
+| ------------ | -------------------------------------------- |
+| 真流式优先   | 本地增量流式 + 在线实时处理                  |
+| 多级回退     | 优先可用性，失败自动降级                     |
+| 音质分层     | 实时流式满足低延迟，离线处理作为最高音质上限 |
+| Swift 6 兼容 | 处理 Sendable、主线程隔离、异步等待告警      |
+| 视频轨直通   | 保持画质并减少重编码开销                     |
 
 ## 支持格式
 
-| 类型 | 格式 | 输出 |
-|------|------|------|
-| 音频 | MP3, M4A, WAV, AAC, AIFF, FLAC | WAV (16kHz Mono Float32) |
-| 视频 | MP4, MOV | 原格式（视频无损 + 处理后音轨） |
+- 音频：MP3, M4A, WAV, AAC, AIFF, FLAC  
+  输出：WAV (16kHz Mono Float32)
+- 视频：MP4, MOV  
+  输出：原格式（视频无损 + 处理后音轨）
 
 ## 许可证
 
