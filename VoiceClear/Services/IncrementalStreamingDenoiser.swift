@@ -22,6 +22,7 @@ final class IncrementalStreamingDenoiser: StreamingAudioPipeline, @unchecked Sen
 
     private var denoiseStrength: Float = 1.0
     private var enableDenoise: Bool = true
+    private var denoiseMetricLogCount = 0
 
     var isRunning: Bool {
         queueLock.lock()
@@ -46,7 +47,21 @@ final class IncrementalStreamingDenoiser: StreamingAudioPipeline, @unchecked Sen
         reachedEOF = false
         denoiseStrength = max(0, min(1, strength))
         enableDenoise = true
+        denoiseMetricLogCount = 0
         queueLock.unlock()
+        // #region agent log
+        DebugRuntimeLogger.log(
+            runId: "run-voice-quality",
+            hypothesisId: "H1",
+            location: "IncrementalStreamingDenoiser.start",
+            message: "incremental denoise start",
+            data: [
+                "strength": denoiseStrength,
+                "startTime": startTime,
+                "isVideo": isVideo
+            ]
+        )
+        // #endregion
         launchWorker(inputURL: inputURL, startTime: startTime, maxDuration: maxDuration, isVideo: isVideo)
     }
 
@@ -62,6 +77,7 @@ final class IncrementalStreamingDenoiser: StreamingAudioPipeline, @unchecked Sen
         reachedEOF = false
         denoiseStrength = 0
         enableDenoise = false
+        denoiseMetricLogCount = 0
         queueLock.unlock()
         launchWorker(inputURL: inputURL, startTime: startTime, maxDuration: maxDuration, isVideo: isVideo)
     }
@@ -318,6 +334,26 @@ final class IncrementalStreamingDenoiser: StreamingAudioPipeline, @unchecked Sen
             offset += frameSize
         }
 
+        if denoiseMetricLogCount < 3 {
+            denoiseMetricLogCount += 1
+            // #region agent log
+            DebugRuntimeLogger.log(
+                runId: "run-voice-quality",
+                hypothesisId: "H3",
+                location: "IncrementalStreamingDenoiser.buildStereoDenoisedBuffer",
+                message: "denoise buffer metrics",
+                data: [
+                    "strength": clippedStrength,
+                    "inputRMS": rms(of: monoSamples),
+                    "outputRMS": rms(of: processed),
+                    "inputPeak": peak(of: monoSamples),
+                    "outputPeak": peak(of: processed),
+                    "sampleCount": monoSamples.count
+                ]
+            )
+            // #endregion
+        }
+
         let frameCount = processed.count
         guard let stereo = AVAudioPCMBuffer(
             pcmFormat: StreamingDenoiser.outputFormat,
@@ -379,6 +415,16 @@ final class IncrementalStreamingDenoiser: StreamingAudioPipeline, @unchecked Sen
             memset(channels[1], 0, safeCount * MemoryLayout<Float>.size)
         }
         return buffer
+    }
+
+    private func rms(of samples: [Float]) -> Float {
+        guard !samples.isEmpty else { return 0 }
+        let sum = samples.reduce(Float(0)) { $0 + $1 * $1 }
+        return sqrt(sum / Float(samples.count))
+    }
+
+    private func peak(of samples: [Float]) -> Float {
+        samples.reduce(Float(0)) { max($0, abs($1)) }
     }
 }
 
