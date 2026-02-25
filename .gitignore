@@ -55,3 +55,6 @@ playground.xcworkspace
 *.aac
 *.flac
 *.xcuserstate
+
+# ===== Other =====
+/social_media
