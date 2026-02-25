@@ -107,6 +107,8 @@ final class PlayerViewModel {
     private var seekOffset: TimeInterval = 0
     private var lastDriftCorrectionTime: TimeInterval = 0
     private var isRemoteStream = false
+    /// 标记当前有效的播放请求，避免异步启动流程与 pause/stop 竞争。
+    private var activePlaybackToken = UUID()
 
     private let maxBufferedDuration: TimeInterval = 2.0
     private let readLoopController = ReadLoopController()
@@ -265,18 +267,20 @@ final class PlayerViewModel {
         }
         if isPlaying { return }
 
+        let token = UUID()
+        activePlaybackToken = token
         playbackMetrics.playRequestAt = Date()
         playbackMetrics.firstFrameAt = nil
         playbackMetrics.startupLatencyMs = nil
         isLoading = true
         if isRemoteStream {
-            await playRemoteStream()
+            await playRemoteStream(token: token)
             return
         }
-        await playLocalStream()
+        await playLocalStream(token: token)
     }
 
-    private func playRemoteStream() async {
+    private func playRemoteStream(token: UUID) async {
         guard let avPlayer else {
             isLoading = false
             showErrorMessage(String(localized: "Remote player unavailable"))
@@ -285,13 +289,17 @@ final class PlayerViewModel {
 
         let start = CMTime(seconds: seekOffset, preferredTimescale: 600)
         await avPlayer.seek(to: start, toleranceBefore: .zero, toleranceAfter: .zero)
+        guard isPlaybackTokenActive(token) else {
+            isLoading = false
+            return
+        }
         avPlayer.play()
         isPlaying = true
         isLoading = false
         startTimeUpdateTimer()
     }
 
-    private func playLocalStream() async {
+    private func playLocalStream(token: UUID) async {
         guard let fileURL = currentFile else {
             isLoading = false
             return
@@ -320,8 +328,6 @@ final class PlayerViewModel {
             try player.setup(format: pipeline.playbackFormat)
             player.volume = Float(volume)
 
-            denoiser = pipeline
-            audioPlayer = player
             readLoopController.setRunning(true)
             allDataRead = false
 
@@ -330,6 +336,12 @@ final class PlayerViewModel {
             let prefillDeadline = Date().addingTimeInterval(2.0)
 
             while prefilled < prefillTarget, Date() < prefillDeadline {
+                if !isPlaybackTokenActive(token) {
+                    player.stop()
+                    pipeline.stop()
+                    isLoading = false
+                    return
+                }
                 if let buffer = pipeline.readNextBuffer() {
                     player.scheduleBuffer(buffer)
                     prefilled += TimeInterval(buffer.frameLength) / pipeline.playbackFormat.sampleRate
@@ -346,9 +358,25 @@ final class PlayerViewModel {
                 ])
             }
 
+            guard isPlaybackTokenActive(token) else {
+                player.stop()
+                pipeline.stop()
+                isLoading = false
+                return
+            }
+
+            denoiser = pipeline
+            audioPlayer = player
+
             if isVideo, let avPlayer {
                 let seekTime = CMTime(seconds: seekOffset, preferredTimescale: 600)
                 await avPlayer.seek(to: seekTime, toleranceBefore: .zero, toleranceAfter: .zero)
+                guard isPlaybackTokenActive(token) else {
+                    player.stop()
+                    pipeline.stop()
+                    isLoading = false
+                    return
+                }
                 avPlayer.play()
             }
             player.play()
@@ -371,6 +399,7 @@ final class PlayerViewModel {
     }
 
     func pause() {
+        activePlaybackToken = UUID()
         seekOffset = currentTime
         readLoopController.setRunning(false)
         audioPlayer?.pause()
@@ -378,9 +407,11 @@ final class PlayerViewModel {
         timeUpdateTimer?.invalidate()
         timeUpdateTimer = nil
         isPlaying = false
+        isLoading = false
     }
 
     func stop() {
+        activePlaybackToken = UUID()
         readLoopController.setRunning(false)
         timeUpdateTimer?.invalidate()
         timeUpdateTimer = nil
@@ -563,6 +594,10 @@ final class PlayerViewModel {
             playerToStop?.stop()
             denoiserToStop?.stop()
         }
+    }
+
+    private func isPlaybackTokenActive(_ token: UUID) -> Bool {
+        activePlaybackToken == token
     }
 
     // MARK: - Remote download fallback

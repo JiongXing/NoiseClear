@@ -134,6 +134,10 @@ struct DenoisePlayerView: View {
                 Text(msg)
             }
         }
+        .onDisappear {
+            // 离开页面时确保停止播放，避免后台继续出声。
+            viewModel.stop()
+        }
     }
 
     // MARK: - 媒体展示区域
