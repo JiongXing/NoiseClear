@@ -21,6 +21,7 @@ final class AVPlayerDenoiseTapProcessor {
     private var tapSampleRate: Double = 0
     private var previousOutputTail: Float = 0
     private var rnPendingSamples: [Float] = []
+    private var sourcePendingSamples: [Float] = []
 
     private var sourceFormat: AVAudioFormat?
     private var toRNConverter: AVAudioConverter?
@@ -224,6 +225,7 @@ final class AVPlayerDenoiseTapProcessor {
         }
         previousOutputTail = 0
         rnPendingSamples.removeAll(keepingCapacity: true)
+        sourcePendingSamples.removeAll(keepingCapacity: true)
     }
 
     private func processResampled(
@@ -300,10 +302,24 @@ final class AVPlayerDenoiseTapProcessor {
         else { return mono }
 
         let downFrameLength = Int(dstBuffer.frameLength)
-        let outCount = min(downFrameLength, mono.count)
-        if outCount == 0 { return mono }
-        let raw = Array(UnsafeBufferPointer(start: dstData, count: downFrameLength))
-        return remapSamplesToFixedCount(raw, targetCount: mono.count)
+        if downFrameLength > 0 {
+            sourcePendingSamples.append(contentsOf: UnsafeBufferPointer(start: dstData, count: downFrameLength))
+        }
+
+        // 使用跨回调的 pending 队列按“原始帧数”精确取样，避免每包线性重映射引入拖音/重音。
+        if sourcePendingSamples.count >= mono.count {
+            let output = Array(sourcePendingSamples.prefix(mono.count))
+            sourcePendingSamples.removeFirst(mono.count)
+            return output
+        }
+
+        // 数据不足时只对缺口做原始音频回填，避免重复拉伸造成的重音。
+        var output = sourcePendingSamples
+        sourcePendingSamples.removeAll(keepingCapacity: true)
+        if output.count < mono.count {
+            output.append(contentsOf: mono.suffix(mono.count - output.count))
+        }
+        return output
     }
 
     private func convert(
@@ -328,25 +344,6 @@ final class AVPlayerDenoiseTapProcessor {
         }
         if err != nil { return nil }
         return output
-    }
-
-    private func remapSamplesToFixedCount(_ samples: [Float], targetCount: Int) -> [Float] {
-        guard targetCount > 0 else { return [] }
-        guard !samples.isEmpty else { return [Float](repeating: 0, count: targetCount) }
-        if samples.count == targetCount { return samples }
-        if samples.count == 1 { return [Float](repeating: samples[0], count: targetCount) }
-        if targetCount == 1 { return [samples[0]] }
-
-        var result = [Float](repeating: 0, count: targetCount)
-        let scale = Float(samples.count - 1) / Float(targetCount - 1)
-        for i in 0..<targetCount {
-            let position = Float(i) * scale
-            let left = Int(position)
-            let right = min(left + 1, samples.count - 1)
-            let fraction = position - Float(left)
-            result[i] = samples[left] * (1 - fraction) + samples[right] * fraction
-        }
-        return result
     }
 
     private func applyBoundarySmoothingIfNeeded(_ samples: inout [Float]) {

@@ -1,91 +1,100 @@
 # VoiceClear 技术方案说明
 
-## 目标
+## 方案定位
 
-- 在 Apple 平台实现高可用音视频降噪
-- 兼顾实时性（低首帧延迟）与稳定性（可回退）
-- 尽量复用 AVFoundation，避免额外第三方媒体栈复杂度
+VoiceClear 当前播放能力采用双链路实时降噪架构：
 
-## 总体架构
+- **本地链路**：`IncrementalStreamingDenoiser` + `AudioEnginePlayer`
+- **在线链路**：`AVPlayerItem` + `MTAudioProcessingTap` + `AVPlayerDenoiseTapProcessor`
 
-项目采用两条主业务线：
+核心目标是同时满足：
 
-- 批处理线：文件导入 -> 离线降噪 -> 导出
-- 播放线：本地/在线输入 -> 真流式降噪播放 -> 指标观测
+- 低启动延迟（Streaming First Frame）
+- 长时播放稳定性（不卡顿、不断播）
+- 音频连续性（降低重音、拖音、爆破音）
 
-关键模块：
+## 播放控制中枢
 
-- `PlayerViewModel`：实时播放状态机和回退控制中心
-- `StreamingAudioPipeline`：统一流式音频读取协议
-- `IncrementalStreamingDenoiser`：本地主播放降噪实现
-- `AVPlayerDenoiseTapProcessor`：在线 URL 实时降噪处理
-- `AudioEnginePlayer`：AVAudioEngine 播放与调度
-- `AVAssetAsyncLoader`：iOS 16+ 异步元数据/轨道加载适配层
+`PlayerViewModel` 统一管理播放状态机、链路选择和回退：
 
-## 关键路径设计
+- 本地输入走 `localEngine` 路径，在线 URL 走 `remoteAVPlayer` 路径
+- 使用 `activePlaybackToken` 保护异步播放请求，避免 `play/pause/seek` 竞争导致状态反复
+- 通过 `PlaybackMetrics` 记录首帧耗时和回退原因
+- 页面退出时触发 `stop()`，确保音频链路及时释放
 
-### 本地媒体播放（默认）
+## 本地流式降噪链路
 
-1. `PlayerViewModel.play()` 选择本地流式路径
-2. `IncrementalStreamingDenoiser` 增量解码 PCM
-3. RNNoise 按 480 样本帧处理
-4. `AudioEnginePlayer` 持续调度播放
+### 在线处理流程
 
-特点：
+1. `IncrementalStreamingDenoiser` 按小块增量读取输入媒体
+2. 统一转换到目标采样格式（降噪为单声道 48k）
+3. 以 RNNoise 帧长（480 samples）执行逐帧降噪
+4. 转为双声道输出并进入 `AudioEnginePlayer` 调度
 
-- 首帧快（小批量预缓冲）
-- 内存峰值可控（增量处理而非整段处理）
-- 可切换回 legacy `StreamingDenoiser`
+### 连续性策略
 
-### 在线媒体播放（优先）
+- 在降噪块拼接处维护 `previousDenoisedTail`
+- 当相邻块边界跳变超过阈值时，对开头片段执行短淡入平滑（fade）
+- 目标是抑制语音瞬态中的爆破感和轻微边界失真
 
-1. `AVPlayerItem` 建立在线播放链路
-2. `MTAudioProcessingTap` 注入音轨处理
-3. Tap 回调中执行 RNNoise
-4. 失败时自动降级（在线原声/下载后本地）
+### 缓冲策略
 
-特点：
+- 管线内部队列上限约 2 秒（`maxQueuedFrames`）
+- 播放前执行小预缓冲（音频约 0.2s，视频约 0.35s）
+- 后台读取循环按缓冲水位持续填充
 
-- 真流式在线降噪
-- 平滑回退策略，优先保证可播放
+## 在线实时降噪链路
 
-## 回退策略
+### 处理流程
 
-按优先级从上到下：
+1. `AVPlayerItem` 建立在线播放
+2. `MTAudioProcessingTap` 挂载音轨处理回调
+3. 回调中统一为 mono，执行 RNNoise，再写回多声道
+4. `AVPlayer` 直接输出（不经过本地 `AudioEnginePlayer`）
+
+### 采样率与连续性策略
+
+在线流源采样率可能与 RNNoise 固定采样率不一致，当前实现使用双向转换：
+
+- `toRNConverter`：源采样率 -> RNNoise 采样率
+- `fromRNConverter`：RNNoise 采样率 -> 源采样率
+
+为避免“每包独立重映射”带来的拖音/重音，现实现采用：
+
+- `rnPendingSamples`：保持 RNNoise 帧对齐，跨回调累计后再处理
+- `sourcePendingSamples`：重采样后样本跨回调连续消费，按输入帧数出样
+- `applyBoundarySmoothingIfNeeded`：回调边界平滑，降低包间突变
+
+该模型本质是“连续样本流”而非“独立包处理”，可显著改善在线链路的时间轴稳定性。
+
+## 回退与可用性策略
+
+在线 URL 路径按可用性逐级回退：
 
 1. 在线 AudioTap 降噪播放
-2. 在线原声播放
-3. 下载后本地播放
+2. 在线原声播放（Tap 不可用或挂载失败）
+3. 下载到本地后播放（远端初始化失败）
 
-触发条件示例：
+回退原因会写入 `fallbackReason`，用于质量分析与后续优化。
 
-- Tap 创建或挂载失败
-- 在线流初始化失败
-- 特定媒体源兼容性问题
+## 并发与线程模型
 
-## 并发与线程安全策略
+- `PlayerViewModel` 运行在 `@MainActor`，保证 UI 状态一致
+- 本地读取循环由独立 `DispatchQueue` 驱动
+- `ReadLoopController` 通过锁保护运行状态
+- 管线实现按 `Sendable` 约束组织，降低并发读写风险
 
-- ViewModel 使用 `@MainActor` 保证 UI 状态一致性
-- 后台读取循环使用线程安全控制器（锁保护）
-- 流式管线对象显式处理 `Sendable` 兼容
-- 避免在异步上下文使用阻塞 API（如 `Thread.sleep`）
+## 质量指标
 
-## 性能与稳定性指标
+建议以以下指标持续评估版本质量：
 
-建议持续监控以下指标：
+- 首帧延迟（`startupLatencyMs`）
+- 回退率及回退原因分布
+- 长时播放稳定性（结束判定正确、无异常中断）
+- 音频连续性主观指标（重音、拖音、爆破音）
 
-- 首帧时间（ms）
-- 缓冲时长与卡顿次数
-- 回退触发率及原因分布
-- 连续播放稳定性（长时无掉音）
+## 后续优化方向
 
-建议门槛：
-
-- 首帧时间 < 800ms（常见设备）
-- 在线回退链路成功率接近 100%
-
-## 未来演进建议
-
-- 增加策略开关（强制 incremental/legacy）用于 A/B 验证
-- 增加链路级日志上报（首帧、回退、卡顿事件）
-- 细化在线流源兼容矩阵（编码格式、容器、码率）
+- 将本地读取循环从 sleep 轮询演进为事件驱动，降低空转开销
+- 细化在线流兼容矩阵（编码、采样率、声道布局）
+- 对边界平滑阈值与窗口长度做参数化，支持设备与内容自适应

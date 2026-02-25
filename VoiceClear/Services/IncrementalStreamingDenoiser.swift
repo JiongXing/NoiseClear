@@ -22,6 +22,7 @@ final class IncrementalStreamingDenoiser: StreamingAudioPipeline, @unchecked Sen
 
     private var denoiseStrength: Float = 1.0
     private var enableDenoise: Bool = true
+    private var previousDenoisedTail: Float = 0
 
     var isRunning: Bool {
         queueLock.lock()
@@ -46,6 +47,7 @@ final class IncrementalStreamingDenoiser: StreamingAudioPipeline, @unchecked Sen
         reachedEOF = false
         denoiseStrength = max(0, min(1, strength))
         enableDenoise = true
+        previousDenoisedTail = 0
         queueLock.unlock()
         launchWorker(inputURL: inputURL, startTime: startTime, maxDuration: maxDuration, isVideo: isVideo)
     }
@@ -62,6 +64,7 @@ final class IncrementalStreamingDenoiser: StreamingAudioPipeline, @unchecked Sen
         reachedEOF = false
         denoiseStrength = 0
         enableDenoise = false
+        previousDenoisedTail = 0
         queueLock.unlock()
         launchWorker(inputURL: inputURL, startTime: startTime, maxDuration: maxDuration, isVideo: isVideo)
     }
@@ -316,6 +319,21 @@ final class IncrementalStreamingDenoiser: StreamingAudioPipeline, @unchecked Sen
                 processed[offset + i] = monoSamples[offset + i] * (1 - clippedStrength) + denoised * clippedStrength
             }
             offset += frameSize
+        }
+
+        if let head = processed.first {
+            let jump = abs(head - previousDenoisedTail)
+            if jump > 0.01 {
+                let fadeCount = min(96, processed.count)
+                let from = previousDenoisedTail
+                for i in 0..<fadeCount {
+                    let t = Float(i + 1) / Float(fadeCount)
+                    processed[i] = from * (1 - t) + processed[i] * t
+                }
+            }
+        }
+        if let tail = processed.last {
+            previousDenoisedTail = tail
         }
 
         let frameCount = processed.count

@@ -2,7 +2,7 @@
 
 > 基于 RNNoise 神经网络的音视频人声降噪工具，支持 macOS 和 iOS 双平台。
 
-VoiceClear 是一款原生 Apple 平台应用，使用 **RNNoise**（Recurrent Neural Network Noise Suppression）进行语音降噪。项目目前采用 **AVFoundation 真流式 + 多级回退** 技术方案，在低延迟播放、在线可用性与兼容性之间做平衡。当前版本中，在线流式降噪已达到可用状态，并针对“音爆/不连续感”完成了关键修复（重采样长度对齐、跨回调连续帧处理、边界平滑）。
+VoiceClear 是一款原生 Apple 平台应用，使用 **RNNoise**（Recurrent Neural Network Noise Suppression）进行语音降噪。项目目前采用 **AVFoundation 真流式 + 多级回退** 技术方案，在低延迟播放、在线可用性与兼容性之间做平衡。当前版本已完成本轮音频连续性修复：在线流式重音/拖音明显下降，本地流式爆破音得到抑制。
 
 详细技术文档见：`docs/TECHNICAL_SOLUTION.md`
 
@@ -31,8 +31,16 @@ VoiceClear 是一款原生 Apple 平台应用，使用 **RNNoise**（Recurrent N
 `AVPlayerItem + MTAudioProcessingTap`
 
 - 在线媒体直接播放
-- 在音轨处理回调中执行 RNNoise（含重采样对齐 + 跨回调连续帧处理）
+- 在音轨处理回调中执行 RNNoise
+- 采用“跨回调样本连续拼接”（`sourcePendingSamples`）替代逐包固定长度重映射，避免拖音/重音
+- 对回调包边界做平滑过渡，降低不连续导致的突变噪声
 - 目标：实现在线“边播边降噪”
+
+### 2.2) 本轮音频连续性修复（2026-02）
+
+- **在线流式链路**：修复重采样后逐包重映射导致的时间轴拉伸，改为连续样本消费模型
+- **本地流式链路**：在 `IncrementalStreamingDenoiser` 增加降噪块边界平滑，抑制人声段爆破音
+- **结果**：同源音频下，在线重音显著降低；本地轻微重音与爆破音明显改善
 
 ### 2.1) 在线流式音质说明（重要）
 
