@@ -1,0 +1,34 @@
+---
+description: VoiceClear 项目功能与目录结构上下文
+alwaysApply: true
+---
+
+# VoiceClear 项目上下文
+
+## 项目功能
+
+- VoiceClear 是面向 iOS/macOS 的音视频人声降噪应用，核心引擎为 RNNoise。
+- 支持本地与在线媒体播放场景，优先采用真流式降噪，并提供多级回退保证可用性。
+- 支持音频/视频文件处理：视频轨直通，仅处理音轨，兼顾音质与性能。
+
+## 目录组织约定
+
+- `VoiceClear/Models`：数据模型（如文件元数据、业务实体）。
+- `VoiceClear/ViewModels`：MVVM 业务状态与交互逻辑，不直接承担底层音频处理细节。
+- `VoiceClear/Services`：音频解码、RNNoise 处理、播放调度、在线流式链路与回退策略。
+- `VoiceClear/Views`：SwiftUI 界面层，负责展示与用户交互。
+- `docs/`：技术方案、架构决策与实现说明。
+
+## AI Agent 工作准则
+
+- 新增功能时优先复用 `Services` 的既有能力，避免在 `Views` 中写重业务逻辑。
+- 涉及播放链路、降噪效果或回退策略的改动，先查阅 `docs/TECHNICAL_SOLUTION.md` 与 `README.md`。
+- 保持 MVVM 边界清晰：UI 状态放在 ViewModel，算法与管线逻辑放在 Services。
+- 优先使用 Swift 并遵循 Apple 平台最佳实践（并发安全、生命周期、可维护性）。
+
+## 示例
+
+- 新增“在线播放状态提示”功能：
+  - UI 组件放在 `VoiceClear/Views`。
+  - 状态与事件流放在 `VoiceClear/ViewModels/PlayerViewModel.swift`。
+  - 若需新增缓冲/回退判定逻辑，放在 `VoiceClear/Services` 对应服务中。
