@@ -47,7 +47,7 @@ struct FileListView: View {
             Image(systemName: "music.note.list")
                 .font(.title2)
                 .foregroundStyle(.tertiary)
-            Text("暂无媒体文件")
+            Text(String(localized: "暂无媒体文件"))
                 .font(.subheadline)
                 .foregroundStyle(.tertiary)
         }
@@ -117,7 +117,7 @@ struct AudioFileRow: View {
                     }
                     .buttonStyle(.borderless)
                     #if os(macOS)
-                    .help("导出文件")
+                    .help(String(localized: "导出文件"))
                     #endif
                 }
 
@@ -134,7 +134,7 @@ struct AudioFileRow: View {
                     .buttonStyle(.borderless)
                     #if os(macOS)
                     .opacity(isHovered ? 1 : 0)
-                    .help("移除文件")
+                    .help(String(localized: "移除文件"))
                     #endif
                 }
             }
@@ -161,7 +161,7 @@ struct AudioFileRow: View {
                 Button {
                     onExport()
                 } label: {
-                    Label("导出文件", systemImage: "square.and.arrow.up")
+                    Label(String(localized: "导出文件"), systemImage: "square.and.arrow.up")
                 }
             }
 
@@ -170,20 +170,20 @@ struct AudioFileRow: View {
                 Button(role: .destructive) {
                     onRemove()
                 } label: {
-                    Label("移除文件", systemImage: "trash")
+                    Label(String(localized: "移除文件"), systemImage: "trash")
                 }
             }
         }
         // 删除确认弹窗，防止误触
         .confirmationDialog(
-            "确认移除",
+            String(localized: "确认移除"),
             isPresented: $showRemoveConfirmation,
             titleVisibility: .visible
         ) {
-            Button("移除", role: .destructive) {
+            Button(String(localized: "移除"), role: .destructive) {
                 onRemove()
             }
-            Button("取消", role: .cancel) {}
+            Button(String(localized: "取消"), role: .cancel) {}
         } message: {
             Text(String(format: String(localized: "确定要移除「%@」吗？"), file.fileName))
         }

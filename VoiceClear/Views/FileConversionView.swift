@@ -113,14 +113,14 @@ struct FileConversionView: View {
                 viewModel.showError = true
             }
         }
-        .confirmationDialog("选择文件来源", isPresented: $showSourceDialog) {
-            Button("从文件选取") {
+        .confirmationDialog(String(localized: "选择文件来源"), isPresented: $showSourceDialog) {
+            Button(String(localized: "从文件选取")) {
                 viewModel.showFilePicker = true
             }
-            Button("从相册选取视频") {
+            Button(String(localized: "从相册选取视频")) {
                 viewModel.showPhotoPicker = true
             }
-            Button("取消", role: .cancel) {}
+            Button(String(localized: "取消"), role: .cancel) {}
         }
         .photosPicker(
             isPresented: $viewModel.showPhotoPicker,
@@ -163,8 +163,8 @@ struct FileConversionView: View {
             }
         }
         #endif
-        .alert("错误", isPresented: $viewModel.showError) {
-            Button("确定", role: .cancel) {}
+        .alert(String(localized: "错误"), isPresented: $viewModel.showError) {
+            Button(String(localized: "确定"), role: .cancel) {}
         } message: {
             if let msg = viewModel.errorMessage {
                 Text(msg)
@@ -186,7 +186,7 @@ struct FileConversionView: View {
     private var fileListSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Label("文件列表", systemImage: "list.bullet")
+                Label(String(localized: "文件列表"), systemImage: "list.bullet")
                     .font(.subheadline)
                     .fontWeight(.medium)
                     .foregroundStyle(.secondary)
@@ -194,7 +194,7 @@ struct FileConversionView: View {
                 Spacer()
 
                 if viewModel.audioFiles.count > 1 && !viewModel.isProcessing {
-                    Button("清空全部", role: .destructive) {
+                    Button(String(localized: "清空全部"), role: .destructive) {
                         viewModel.removeAll()
                     }
                     .font(.caption)
@@ -250,13 +250,13 @@ struct FileConversionView: View {
 
     private var controlsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("降噪强度", systemImage: "slider.horizontal.3")
+            Label(String(localized: "降噪强度"), systemImage: "slider.horizontal.3")
                 .font(.subheadline)
                 .fontWeight(.medium)
                 .foregroundStyle(.secondary)
 
             HStack(spacing: 12) {
-                Text("轻度")
+                Text(String(localized: "轻度"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -266,7 +266,7 @@ struct FileConversionView: View {
                     .tint(.accentColor)
                     .disabled(viewModel.isProcessing)
 
-                Text("强力")
+                Text(String(localized: "强力"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -317,7 +317,7 @@ struct FileConversionView: View {
                     Button {
                         Task { await viewModel.exportAll() }
                     } label: {
-                        Label("全部导出", systemImage: "square.and.arrow.up")
+                        Label(String(localized: "全部导出"), systemImage: "square.and.arrow.up")
                     }
                     .buttonStyle(.bordered)
                     .disabled(viewModel.isProcessing)
@@ -330,7 +330,7 @@ struct FileConversionView: View {
                     if viewModel.isProcessing {
                         Image(systemName: "hourglass")
                     } else {
-                        Label("开始降噪", systemImage: "wand.and.stars")
+                        Label(String(localized: "开始降噪"), systemImage: "wand.and.stars")
                     }
                 }
                 .buttonStyle(.borderedProminent)
@@ -367,11 +367,11 @@ struct FileConversionView: View {
                     .controlSize(.large)
                     .tint(.white)
 
-                Text("正在从相册导入...")
+                Text(String(localized: "正在从相册导入..."))
                     .font(.headline)
                     .foregroundStyle(.white)
 
-                Text("大文件可能需要较长时间")
+                Text(String(localized: "大文件可能需要较长时间"))
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.7))
             }

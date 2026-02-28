@@ -9,13 +9,17 @@ import SwiftUI
 
 @main
 struct VoiceClearApp: App {
+    @StateObject private var languageSettings = LanguageSettings()
+
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(languageSettings)
+                .environment(\.locale, languageSettings.selectedLanguage.locale)
         }
         #if os(macOS)
-        .defaultSize(width: 1280, height: 800)
-        .windowResizability(.contentSize)
+        .defaultSize(width: 800, height: 600)
+        .windowResizability(.automatic)
         #endif
     }
 }
