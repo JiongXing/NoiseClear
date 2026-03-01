@@ -58,3 +58,4 @@ playground.xcworkspace
 
 # ===== Other =====
 /social_media
+*.log
