@@ -90,7 +90,7 @@ struct AudioFileRow: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
-                    Text(file.status.displayText(locale: languageSettings.selectedLanguage.locale))
+                    Text(file.status.displayText(locale: languageSettings.locale))
                         .font(.caption)
                         .foregroundStyle(statusColor)
                 }
@@ -177,16 +177,16 @@ struct AudioFileRow: View {
         }
         // 删除确认弹窗，防止误触
         .confirmationDialog(
-            LocaleLocalizer.string(for: "确认移除", locale: languageSettings.selectedLanguage.locale),
+            languageSettings.tr("确认移除"),
             isPresented: $showRemoveConfirmation,
             titleVisibility: .visible
         ) {
-            Button(LocaleLocalizer.string(for: "移除", locale: languageSettings.selectedLanguage.locale), role: .destructive) {
+            Button(languageSettings.tr("移除"), role: .destructive) {
                 onRemove()
             }
-            Button(LocaleLocalizer.string(for: "取消", locale: languageSettings.selectedLanguage.locale), role: .cancel) {}
+            Button(languageSettings.tr("取消"), role: .cancel) {}
         } message: {
-            Text(String(format: LocaleLocalizer.string(for: "确定要移除「%@」吗？", locale: languageSettings.selectedLanguage.locale), file.fileName))
+            Text(languageSettings.tr("确定要移除「%@」吗？", file.fileName))
         }
         #if os(macOS)
         .onHover { hovering in

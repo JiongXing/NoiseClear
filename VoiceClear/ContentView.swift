@@ -70,15 +70,15 @@ struct ContentView: View {
                         switch item {
                         case .denoisePlayer:
                             DenoisePlayerView()
-                                .navigationTitle(LocaleLocalizer.string(for: item.rawValue, locale: languageSettings.selectedLanguage.locale))
+                                .navigationTitle(languageSettings.tr(item.rawValue))
                                 #if os(macOS)
-                                .navigationSubtitle(LocaleLocalizer.string(for: item.subtitleKey, locale: languageSettings.selectedLanguage.locale))
+                                .navigationSubtitle(languageSettings.tr(item.subtitleKey))
                                 #endif
                         case .fileConversion:
                             FileConversionView()
-                                .navigationTitle(LocaleLocalizer.string(for: item.rawValue, locale: languageSettings.selectedLanguage.locale))
+                                .navigationTitle(languageSettings.tr(item.rawValue))
                                 #if os(macOS)
-                                .navigationSubtitle(LocaleLocalizer.string(for: item.subtitleKey, locale: languageSettings.selectedLanguage.locale))
+                                .navigationSubtitle(languageSettings.tr(item.subtitleKey))
                                 #endif
                         }
                     }
@@ -108,7 +108,7 @@ struct ContentView: View {
                         .zIndex(3)
                 }
             }
-            .environment(\.locale, languageSettings.selectedLanguage.locale)
+            .environment(\.locale, languageSettings.locale)
             #if os(macOS)
             .onExitCommand {
                 guard isSettingsPresented else { return }
@@ -116,10 +116,8 @@ struct ContentView: View {
             }
             #endif
             .onChange(of: languageSettings.selectedLanguage) { _, newLanguage in
-                let locale = newLanguage.locale
-                let format = LocaleLocalizer.string(for: "语言已切换为 %@", locale: locale)
-                let name = LocaleLocalizer.string(for: newLanguage.nameKey, locale: locale)
-                languageToastText = String(format: format, name)
+                let name = newLanguage.tr(newLanguage.nameKey)
+                languageToastText = newLanguage.tr("语言已切换为 %@", name)
                 withAnimation(.easeOut(duration: 0.2)) {
                     showLanguageToast = true
                 }

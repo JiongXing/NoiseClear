@@ -103,14 +103,14 @@ struct DenoisePlayerView: View {
                 viewModel.showError = true
             }
         }
-        .confirmationDialog(LocaleLocalizer.string(for: "选择文件来源", locale: languageSettings.selectedLanguage.locale), isPresented: $showSourceDialog) {
-            Button(LocaleLocalizer.string(for: "从文件选取", locale: languageSettings.selectedLanguage.locale)) {
+        .confirmationDialog(languageSettings.tr("选择文件来源"), isPresented: $showSourceDialog) {
+            Button(languageSettings.tr("从文件选取")) {
                 viewModel.showFilePicker = true
             }
-            Button(LocaleLocalizer.string(for: "从相册选取视频", locale: languageSettings.selectedLanguage.locale)) {
+            Button(languageSettings.tr("从相册选取视频")) {
                 viewModel.showPhotoPicker = true
             }
-            Button(LocaleLocalizer.string(for: "取消", locale: languageSettings.selectedLanguage.locale), role: .cancel) {}
+            Button(languageSettings.tr("取消"), role: .cancel) {}
         }
         .photosPicker(
             isPresented: $viewModel.showPhotoPicker,
@@ -127,11 +127,11 @@ struct DenoisePlayerView: View {
                     if let movie = try await item.loadTransferable(type: TransferableMovie.self) {
                         await viewModel.loadFile(url: movie.url)
                     } else {
-                        viewModel.errorMessage = LocaleLocalizer.string(for: "Cannot read selected video", locale: languageSettings.selectedLanguage.locale)
+                        viewModel.errorMessage = languageSettings.tr("Cannot read selected video")
                         viewModel.showError = true
                     }
                 } catch {
-                    viewModel.errorMessage = String(format: LocaleLocalizer.string(for: "Import from album failed: %@", locale: languageSettings.selectedLanguage.locale), error.localizedDescription)
+                    viewModel.errorMessage = languageSettings.tr("Import from album failed: %@", error.localizedDescription)
                     viewModel.showError = true
                 }
                 selectedPhotoItems = []
@@ -143,8 +143,8 @@ struct DenoisePlayerView: View {
             }
         }
         #endif
-        .alert(LocaleLocalizer.string(for: "错误", locale: languageSettings.selectedLanguage.locale), isPresented: $viewModel.showError) {
-            Button(LocaleLocalizer.string(for: "确定", locale: languageSettings.selectedLanguage.locale), role: .cancel) {}
+        .alert(languageSettings.tr("错误"), isPresented: $viewModel.showError) {
+            Button(languageSettings.tr("确定"), role: .cancel) {}
         } message: {
             if let msg = viewModel.errorMessage {
                 Text(msg)
@@ -512,13 +512,13 @@ struct DenoisePlayerView: View {
             }
 
             if let startup = viewModel.playbackMetrics.startupLatencyMs {
-                Text(String(format: LocaleLocalizer.string(for: "首帧延迟 %.0f ms", locale: languageSettings.selectedLanguage.locale), startup))
+                Text(languageSettings.tr("首帧延迟 %.0f ms", startup))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(startup > viewModel.releaseGate.startupLatencyMs ? .orange : .secondary)
             }
 
             if let reason = viewModel.playbackMetrics.fallbackReason {
-                Text(String(format: LocaleLocalizer.string(for: "回退原因: %@", locale: languageSettings.selectedLanguage.locale), reason))
+                Text(languageSettings.tr("回退原因: %@", reason))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

@@ -68,13 +68,13 @@ enum ProcessingStatus: Equatable {
     func displayText(locale: Locale) -> String {
         switch self {
         case .idle:
-            return LocaleLocalizer.string(for: "等待处理", locale: locale)
+            return locale.tr("等待处理")
         case .processing(let p):
-            return String(format: LocaleLocalizer.string(for: "处理中 %lld%%", locale: locale), Int(p * 100))
+            return locale.tr("处理中 %lld%%", Int(p * 100))
         case .completed:
-            return LocaleLocalizer.string(for: "已完成", locale: locale)
+            return locale.tr("已完成")
         case .failed(let msg):
-            return String(format: LocaleLocalizer.string(for: "失败: %@", locale: locale), msg)
+            return locale.tr("失败: %@", msg)
         }
     }
 }

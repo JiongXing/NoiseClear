@@ -62,6 +62,40 @@ final class LanguageSettings: ObservableObject {
         let storedValue = UserDefaults.standard.string(forKey: Keys.appLanguage)
         selectedLanguage = AppLanguage(rawValue: storedValue ?? "") ?? .simplifiedChinese
     }
+
+    var locale: Locale { selectedLanguage.locale }
+
+    /// 运行时按当前应用语言获取本地化字符串
+    func tr(_ key: String) -> String {
+        LocaleLocalizer.string(for: key, locale: locale)
+    }
+
+    /// 运行时按当前应用语言获取并格式化本地化字符串
+    func tr(_ key: String, _ args: CVarArg...) -> String {
+        String(format: tr(key), locale: locale, arguments: args)
+    }
+}
+
+extension AppLanguage {
+    /// 按指定语言获取本地化字符串（适合 onChange 中基于新语言立即取文案）
+    func tr(_ key: String) -> String {
+        LocaleLocalizer.string(for: key, locale: locale)
+    }
+
+    func tr(_ key: String, _ args: CVarArg...) -> String {
+        String(format: tr(key), locale: locale, arguments: args)
+    }
+}
+
+extension Locale {
+    /// 按当前 Locale 获取本地化字符串
+    func tr(_ key: String) -> String {
+        LocaleLocalizer.string(for: key, locale: self)
+    }
+
+    func tr(_ key: String, _ args: CVarArg...) -> String {
+        String(format: tr(key), locale: self, arguments: args)
+    }
 }
 
 // MARK: - 运行时 locale 指定本地化（用于 Toast 等非 Text 场景）
