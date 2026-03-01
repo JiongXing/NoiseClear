@@ -1219,19 +1219,19 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Voice Clear"
+            "value" : "清音"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Voice Clear"
+            "value" : "清音"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Voice Clear"
+            "value" : "清音"
           }
         }
       }

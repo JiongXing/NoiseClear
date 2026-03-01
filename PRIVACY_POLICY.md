@@ -2,11 +2,11 @@
 
 **Last updated: February 23, 2026**
 
-Thank you for choosing **Voice Clear** ("we", "our", or "the App"). We are committed to protecting your privacy. This Privacy Policy explains how we handle information when you use our application.
+Thank you for choosing **Voice Clear（清音）** ("we", "our", or "the App"). The App name is displayed as "Voice Clear" in English and "清音" in Chinese/Japanese locales. We are committed to protecting your privacy. This Privacy Policy explains how we handle information when you use our application.
 
 ## Overview
 
-Voice Clear is an audio and video noise reduction tool that processes all files entirely on your device. **We do not collect, store, transmit, or share any personal information or user data whatsoever.**
+Voice Clear（清音）is an audio and video noise reduction tool that processes all files entirely on your device. **We do not collect, store, transmit, or share any personal information or user data whatsoever.**
 
 ## Information We Do Not Collect
 
@@ -21,7 +21,7 @@ We want to be clear about what we do **not** do:
 
 ## How the App Works
 
-Voice Clear uses the RNNoise neural network engine to perform noise reduction on audio and video files. All processing happens **locally on your device**. Specifically:
+Voice Clear（清音）uses the RNNoise neural network engine to perform noise reduction on audio and video files. All processing happens **locally on your device**. Specifically:
 
 - Audio and video files you select are processed entirely on-device.
 - No files or audio data are uploaded to any server.
@@ -30,11 +30,11 @@ Voice Clear uses the RNNoise neural network engine to perform noise reduction on
 
 ## No Server or Backend
 
-Voice Clear does not have a server, backend, or cloud infrastructure. There is no remote system that receives, processes, or stores any data from the App.
+Voice Clear（清音）does not have a server, backend, or cloud infrastructure. There is no remote system that receives, processes, or stores any data from the App.
 
 ## Third-Party Services
 
-Voice Clear does not integrate any third-party analytics, advertising, or tracking services. No data is shared with any third parties.
+Voice Clear（清音）does not integrate any third-party analytics, advertising, or tracking services. No data is shared with any third parties.
 
 ## File Access
 
@@ -42,7 +42,7 @@ The App only accesses files that you explicitly select or drag into the App for 
 
 ## Children's Privacy
 
-Voice Clear does not collect any personal information from anyone, including children under the age of 13. The App is safe for users of all ages.
+Voice Clear（清音）does not collect any personal information from anyone, including children under the age of 13. The App is safe for users of all ages.
 
 ## Changes to This Privacy Policy
 
@@ -56,4 +56,4 @@ If you have any questions or concerns about this Privacy Policy, please contact 
 
 ---
 
-© 2026 Voice Clear. All rights reserved.
+© 2026 Voice Clear（清音）. All rights reserved.
