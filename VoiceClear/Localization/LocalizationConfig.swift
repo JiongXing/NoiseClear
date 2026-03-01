@@ -1,7 +1,7 @@
 import Foundation
 
 enum LocalizationConfig {
-    static let supportedLanguageCodes: [String] = ["zh-Hans", "zh-Hant", "en"]
+    static let supportedLanguageCodes: [String] = ["zh-Hans", "zh-Hant", "en", "ja"]
     static let fallbackLanguageCode = "en"
 
     static func bestMatch(preferredLanguages: [String]) -> String {
@@ -30,6 +30,10 @@ enum LocalizationConfig {
 
         if normalized.hasPrefix("en") {
             return "en"
+        }
+
+        if normalized.hasPrefix("ja") {
+            return "ja"
         }
 
         let primary = normalized.split(separator: "-").first.map(String.init) ?? normalized

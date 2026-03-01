@@ -12,6 +12,7 @@ struct AppLanguage: Identifiable, Hashable {
         switch code {
         case "zh-Hans": return .settingsLanguageNameZhHans
         case "zh-Hant": return .settingsLanguageNameZhHant
+        case "ja": return .settingsLanguageNameJa
         default: return .settingsLanguageNameEn
         }
     }
@@ -20,6 +21,7 @@ struct AppLanguage: Identifiable, Hashable {
         switch code {
         case "zh-Hans": return .settingsLanguageSubtitleZhHans
         case "zh-Hant": return .settingsLanguageSubtitleZhHant
+        case "ja": return .settingsLanguageSubtitleJa
         default: return .settingsLanguageSubtitleEn
         }
     }

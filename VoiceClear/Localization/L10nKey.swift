@@ -34,9 +34,11 @@ enum L10nKey: String, CaseIterable {
     case settingsLanguageNameZhHans = "settings.language.name.zh_hans"
     case settingsLanguageNameZhHant = "settings.language.name.zh_hant"
     case settingsLanguageNameEn = "settings.language.name.en"
+    case settingsLanguageNameJa = "settings.language.name.ja"
     case settingsLanguageSubtitleZhHans = "settings.language.subtitle.zh_hans"
     case settingsLanguageSubtitleZhHant = "settings.language.subtitle.zh_hant"
     case settingsLanguageSubtitleEn = "settings.language.subtitle.en"
+    case settingsLanguageSubtitleJa = "settings.language.subtitle.ja"
 
     case dropzoneMacTitle = "dropzone.mac.title"
     case dropzoneMacSubtitle = "dropzone.mac.subtitle"
