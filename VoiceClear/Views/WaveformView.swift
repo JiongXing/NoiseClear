@@ -410,7 +410,7 @@ struct WaveformComparisonView: View {
         VStack(spacing: 0) {
             // ── 上方：原始波形 ──
             waveformRow(
-                labelKey: "原始音频",
+                labelKey: .waveformOriginalAudio,
                 icon: "waveform",
                 samples: originalSamples,
                 color: originalColor,
@@ -425,7 +425,7 @@ struct WaveformComparisonView: View {
 
             // ── 下方：降噪后波形（smooth 风格 → 平滑曲线，强调干净感）──
             waveformRow(
-                labelKey: hasProcessedData ? "降噪后" : "降噪后（待处理）",
+                labelKey: hasProcessedData ? .waveformDenoised : .waveformDenoisedPending,
                 icon: "waveform.path.ecg",
                 samples: hasProcessedData ? processedSamples : [],
                 color: hasProcessedData ? processedColor : .secondary.opacity(0.3),
@@ -444,7 +444,7 @@ struct WaveformComparisonView: View {
     /// 一行波形：标签 + 波形 + 可选右侧内容
     @ViewBuilder
     private func waveformRow<Trailing: View>(
-        labelKey: String,
+        labelKey: L10nKey,
         icon: String,
         samples: [Float],
         color: Color,
@@ -458,7 +458,7 @@ struct WaveformComparisonView: View {
                         .fill(color.opacity(0.8))
                         .frame(width: 6, height: 6)
 
-                    Text(LocalizedStringKey(labelKey))
+                    Text(L10n.text(labelKey))
                         .font(.caption2)
                         .fontWeight(.medium)
                         .foregroundStyle(.secondary)

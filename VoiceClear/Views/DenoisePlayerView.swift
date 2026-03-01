@@ -103,14 +103,14 @@ struct DenoisePlayerView: View {
                 viewModel.showError = true
             }
         }
-        .confirmationDialog(languageSettings.tr("选择文件来源"), isPresented: $showSourceDialog) {
-            Button(languageSettings.tr("从文件选取")) {
+        .confirmationDialog(L10n.string(.playerSelectFileSource, locale: languageSettings.currentLocale), isPresented: $showSourceDialog) {
+            Button(L10n.string(.playerSourceFromFiles, locale: languageSettings.currentLocale)) {
                 viewModel.showFilePicker = true
             }
-            Button(languageSettings.tr("从相册选取视频")) {
+            Button(L10n.string(.playerSourceFromPhotos, locale: languageSettings.currentLocale)) {
                 viewModel.showPhotoPicker = true
             }
-            Button(languageSettings.tr("取消"), role: .cancel) {}
+            Button(L10n.string(.commonCancel, locale: languageSettings.currentLocale), role: .cancel) {}
         }
         .photosPicker(
             isPresented: $viewModel.showPhotoPicker,
@@ -127,11 +127,11 @@ struct DenoisePlayerView: View {
                     if let movie = try await item.loadTransferable(type: TransferableMovie.self) {
                         await viewModel.loadFile(url: movie.url)
                     } else {
-                        viewModel.errorMessage = languageSettings.tr("Cannot read selected video")
+                        viewModel.errorMessage = L10n.string(.playerErrorCannotReadSelectedVideo, locale: languageSettings.currentLocale)
                         viewModel.showError = true
                     }
                 } catch {
-                    viewModel.errorMessage = languageSettings.tr("Import from album failed: %@", error.localizedDescription)
+                    viewModel.errorMessage = L10n.string(.playerErrorImportAlbumFailed, locale: languageSettings.currentLocale, error.localizedDescription)
                     viewModel.showError = true
                 }
                 selectedPhotoItems = []
@@ -143,8 +143,8 @@ struct DenoisePlayerView: View {
             }
         }
         #endif
-        .alert(languageSettings.tr("错误"), isPresented: $viewModel.showError) {
-            Button(languageSettings.tr("确定"), role: .cancel) {}
+        .alert(L10n.string(.commonError, locale: languageSettings.currentLocale), isPresented: $viewModel.showError) {
+            Button(L10n.string(.commonConfirm, locale: languageSettings.currentLocale), role: .cancel) {}
         } message: {
             if let msg = viewModel.errorMessage {
                 Text(msg)
@@ -202,7 +202,7 @@ struct DenoisePlayerView: View {
                         .fill(Color.primary.opacity(0.1))
                         .frame(height: 1)
 
-                    Text("或")
+                    Text(L10n.text(.commonOr))
                         .font(.caption)
                         .foregroundStyle(.tertiary)
 
@@ -240,9 +240,7 @@ struct DenoisePlayerView: View {
                         .font(.headline)
                         .lineLimit(1)
 
-                    Text(LocalizedStringKey(viewModel.isPlaying
-                         ? (viewModel.denoiseEnabled ? "降噪播放中" : "原始播放中")
-                         : "准备就绪"))
+                    Text(L10n.text(playbackStateKey))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -256,7 +254,7 @@ struct DenoisePlayerView: View {
                         showSourceDialog = true
                         #endif
                     } label: {
-                        Label("更换文件", systemImage: "arrow.triangle.2.circlepath")
+                        Label(L10n.string(.playerActionReplaceFile, locale: languageSettings.currentLocale), systemImage: "arrow.triangle.2.circlepath")
                             .font(.caption)
                     }
                     .buttonStyle(.bordered)
@@ -281,10 +279,10 @@ struct DenoisePlayerView: View {
                 ProgressView()
                     .controlSize(.large)
 
-                Text("正在加载在线资源...")
+                Text(L10n.text(.playerRemoteLoadingTitle))
                     .font(.headline)
 
-                Text("加载完成后将显示播放与降噪控制面板")
+                Text(L10n.text(.playerRemoteLoadingHint))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -304,7 +302,7 @@ struct DenoisePlayerView: View {
                     .foregroundStyle(.secondary)
                     .frame(width: 20)
 
-                TextField("输入在线音频/视频 URL", text: $viewModel.urlInputText)
+                TextField(L10n.string(.playerURLPlaceholder, locale: languageSettings.currentLocale), text: $viewModel.urlInputText)
                     .textFieldStyle(.plain)
                     .font(.subheadline)
                     .autocorrectionDisabled()
@@ -322,7 +320,7 @@ struct DenoisePlayerView: View {
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.borderless)
-                .help("粘贴")
+                .help(L10n.string(.commonPaste, locale: languageSettings.currentLocale))
 
                 // 清空按钮
                 if !viewModel.urlInputText.isEmpty {
@@ -334,7 +332,7 @@ struct DenoisePlayerView: View {
                             .foregroundStyle(.tertiary)
                     }
                     .buttonStyle(.borderless)
-                    .help("清空")
+                    .help(L10n.string(.commonClear, locale: languageSettings.currentLocale))
                 }
             }
             .padding(.horizontal, 12)
@@ -356,10 +354,10 @@ struct DenoisePlayerView: View {
                     if viewModel.isDownloading {
                         ProgressView()
                             .controlSize(.small)
-                        Text("下载中...")
+                        Text(L10n.text(.playerActionLoading))
                     } else {
                         Image(systemName: "arrow.down.circle")
-                        Text("加载在线文件")
+                        Text(L10n.text(.playerActionLoadOnlineFile))
                     }
                 }
                 .font(.subheadline)
@@ -501,24 +499,24 @@ struct DenoisePlayerView: View {
     private var streamStatusSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Label("播放链路", systemImage: "waveform.path.ecg")
+                Label(L10n.string(.playerSectionPipeline, locale: languageSettings.currentLocale), systemImage: "waveform.path.ecg")
                     .font(.subheadline)
                     .fontWeight(.medium)
                     .foregroundStyle(.secondary)
                 Spacer()
-                Text(viewModel.streamStatusText.isEmpty ? "—" : viewModel.streamStatusText)
+                Text(viewModel.streamStatusText.isEmpty ? L10n.string(.commonEmDash, locale: languageSettings.currentLocale) : viewModel.streamStatusText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
             if let startup = viewModel.playbackMetrics.startupLatencyMs {
-                Text(languageSettings.tr("首帧延迟 %.0f ms", startup))
+                Text(L10n.string(.playerMetricStartupLatency, locale: languageSettings.currentLocale, startup))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(startup > viewModel.releaseGate.startupLatencyMs ? .orange : .secondary)
             }
 
             if let reason = viewModel.playbackMetrics.fallbackReason {
-                Text(languageSettings.tr("回退原因: %@", reason))
+                Text(L10n.string(.playerMetricFallbackReason, locale: languageSettings.currentLocale, reason))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -530,6 +528,13 @@ struct DenoisePlayerView: View {
             RoundedRectangle(cornerRadius: 10)
                 .fill(.ultraThinMaterial)
         }
+    }
+
+    private var playbackStateKey: L10nKey {
+        if viewModel.isPlaying {
+            return viewModel.denoiseEnabled ? .playerStateDenoisingPlayback : .playerStateOriginalPlayback
+        }
+        return .playerStateReady
     }
 
     /// 播放按钮图标
@@ -552,27 +557,27 @@ struct DenoisePlayerView: View {
             // 降噪开关 & 强度
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Label("降噪设置", systemImage: "wand.and.stars")
+                    Label(L10n.string(.playerSectionDenoiseSettings, locale: languageSettings.currentLocale), systemImage: "wand.and.stars")
                         .font(.subheadline)
                         .fontWeight(.medium)
                         .foregroundStyle(.secondary)
 
                     Spacer()
 
-                    Toggle("启用降噪", isOn: $viewModel.denoiseEnabled)
+                    Toggle(L10n.string(.playerToggleEnableDenoise, locale: languageSettings.currentLocale), isOn: $viewModel.denoiseEnabled)
                         .toggleStyle(.switch)
                         .controlSize(.small)
                         .labelsHidden()
                         .disabled(viewModel.isPlaying)
 
-                    Text(LocalizedStringKey(viewModel.denoiseEnabled ? "已启用" : "已关闭"))
+                    Text(viewModel.denoiseEnabled ? L10n.text(.playerStateEnabled) : L10n.text(.playerStateDisabled))
                         .font(.caption)
                         .foregroundStyle(viewModel.denoiseEnabled ? .green : .secondary)
                 }
 
                 if viewModel.denoiseEnabled {
                     HStack(spacing: 12) {
-                        Text("轻度")
+                        Text(L10n.text(.commonLight))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .frame(width: 30)
@@ -581,7 +586,7 @@ struct DenoisePlayerView: View {
                             .tint(.accentColor)
                             .disabled(viewModel.isPlaying)
 
-                        Text("强力")
+                        Text(L10n.text(.commonStrong))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .frame(width: 30)
@@ -602,7 +607,7 @@ struct DenoisePlayerView: View {
 
             // 音量控制
             VStack(alignment: .leading, spacing: 8) {
-                Label("音量", systemImage: volumeIcon)
+                Label(L10n.string(.playerSectionVolume, locale: languageSettings.currentLocale), systemImage: volumeIcon)
                     .font(.subheadline)
                     .fontWeight(.medium)
                     .foregroundStyle(.secondary)
@@ -668,11 +673,11 @@ struct DenoisePlayerView: View {
                     .controlSize(.large)
                     .tint(.white)
 
-                Text("正在从相册导入...")
+                Text(L10n.text(.commonImportingAlbum))
                     .font(.headline)
                     .foregroundStyle(.white)
 
-                Text("大文件可能需要较长时间")
+                Text(L10n.text(.commonImportingAlbumHint))
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.7))
             }

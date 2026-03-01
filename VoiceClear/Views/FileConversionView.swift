@@ -81,7 +81,7 @@ struct FileConversionView: View {
                 ToolbarItem(placement: .automatic) {
                     HStack(spacing: 12) {
                         Label(
-                            languageSettings.tr("%lld 个文件", Int64(viewModel.audioFiles.count)),
+                            L10n.string(.commonFilesCount, locale: languageSettings.currentLocale, Int64(viewModel.audioFiles.count)),
                             systemImage: "doc.on.doc"
                         )
                         .font(.caption)
@@ -90,7 +90,7 @@ struct FileConversionView: View {
                         let completed = viewModel.audioFiles.filter { $0.status.isCompleted }.count
                         if completed > 0 {
                             Label(
-                                languageSettings.tr("%lld 已完成", Int64(completed)),
+                                L10n.string(.commonCompletedCount, locale: languageSettings.currentLocale, Int64(completed)),
                                 systemImage: "checkmark.circle"
                             )
                             .font(.caption)
@@ -114,14 +114,14 @@ struct FileConversionView: View {
                 viewModel.showError = true
             }
         }
-        .confirmationDialog(languageSettings.tr("选择文件来源"), isPresented: $showSourceDialog) {
-            Button(languageSettings.tr("从文件选取")) {
+        .confirmationDialog(L10n.string(.playerSelectFileSource, locale: languageSettings.currentLocale), isPresented: $showSourceDialog) {
+            Button(L10n.string(.playerSourceFromFiles, locale: languageSettings.currentLocale)) {
                 viewModel.showFilePicker = true
             }
-            Button(languageSettings.tr("从相册选取视频")) {
+            Button(L10n.string(.playerSourceFromPhotos, locale: languageSettings.currentLocale)) {
                 viewModel.showPhotoPicker = true
             }
-            Button(languageSettings.tr("取消"), role: .cancel) {}
+            Button(L10n.string(.commonCancel, locale: languageSettings.currentLocale), role: .cancel) {}
         }
         .photosPicker(
             isPresented: $viewModel.showPhotoPicker,
@@ -140,7 +140,7 @@ struct FileConversionView: View {
                             importedURLs.append(movie.url)
                         }
                     } catch {
-                        viewModel.errorMessage = languageSettings.tr("Import from album failed: %@", error.localizedDescription)
+                        viewModel.errorMessage = L10n.string(.conversionErrorImportAlbumFailed, locale: languageSettings.currentLocale, error.localizedDescription)
                         viewModel.showError = true
                     }
                 }
@@ -164,8 +164,8 @@ struct FileConversionView: View {
             }
         }
         #endif
-        .alert(languageSettings.tr("错误"), isPresented: $viewModel.showError) {
-            Button(languageSettings.tr("确定"), role: .cancel) {}
+        .alert(L10n.string(.commonError, locale: languageSettings.currentLocale), isPresented: $viewModel.showError) {
+            Button(L10n.string(.commonConfirm, locale: languageSettings.currentLocale), role: .cancel) {}
         } message: {
             if let msg = viewModel.errorMessage {
                 Text(msg)
@@ -187,7 +187,7 @@ struct FileConversionView: View {
     private var fileListSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Label("文件列表", systemImage: "list.bullet")
+                Label(L10n.string(.conversionSectionFileList, locale: languageSettings.currentLocale), systemImage: "list.bullet")
                     .font(.subheadline)
                     .fontWeight(.medium)
                     .foregroundStyle(.secondary)
@@ -195,7 +195,7 @@ struct FileConversionView: View {
                 Spacer()
 
                 if viewModel.audioFiles.count > 1 && !viewModel.isProcessing {
-                    Button(languageSettings.tr("清空全部"), role: .destructive) {
+                    Button(L10n.string(.conversionActionClearAll, locale: languageSettings.currentLocale), role: .destructive) {
                         viewModel.removeAll()
                     }
                     .font(.caption)
@@ -229,7 +229,7 @@ struct FileConversionView: View {
 
     private func waveformSection(for file: AudioFileItem) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label(languageSettings.tr("波形预览 — %@", file.fileName), systemImage: "waveform")
+            Label(L10n.string(.conversionWaveformPreview, locale: languageSettings.currentLocale, file.fileName), systemImage: "waveform")
                 .font(.subheadline)
                 .fontWeight(.medium)
                 .foregroundStyle(.secondary)
@@ -251,13 +251,13 @@ struct FileConversionView: View {
 
     private var controlsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("降噪强度", systemImage: "slider.horizontal.3")
+            Label(L10n.string(.conversionSectionDenoiseStrength, locale: languageSettings.currentLocale), systemImage: "slider.horizontal.3")
                 .font(.subheadline)
                 .fontWeight(.medium)
                 .foregroundStyle(.secondary)
 
             HStack(spacing: 12) {
-                Text("轻度")
+                Text(L10n.text(.commonLight))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -267,7 +267,7 @@ struct FileConversionView: View {
                     .tint(.accentColor)
                     .disabled(viewModel.isProcessing)
 
-                Text("强力")
+                Text(L10n.text(.commonStrong))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -304,7 +304,7 @@ struct FileConversionView: View {
                     .frame(width: 36)
 
                 if let remaining = viewModel.estimatedRemainingSeconds, remaining >= 5 {
-                    Text(languageSettings.tr("剩余 %@", formatRemainingTime(remaining)))
+                    Text(L10n.string(.conversionLabelRemaining, locale: languageSettings.currentLocale, formatRemainingTime(remaining)))
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
@@ -318,7 +318,7 @@ struct FileConversionView: View {
                     Button {
                         Task { await viewModel.exportAll() }
                     } label: {
-                        Label("全部导出", systemImage: "square.and.arrow.up")
+                        Label(L10n.string(.conversionActionExportAll, locale: languageSettings.currentLocale), systemImage: "square.and.arrow.up")
                     }
                     .buttonStyle(.bordered)
                     .disabled(viewModel.isProcessing)
@@ -331,7 +331,7 @@ struct FileConversionView: View {
                     if viewModel.isProcessing {
                         Image(systemName: "hourglass")
                     } else {
-                        Label("开始降噪", systemImage: "wand.and.stars")
+                        Label(L10n.string(.conversionActionStartDenoise, locale: languageSettings.currentLocale), systemImage: "wand.and.stars")
                     }
                 }
                 .buttonStyle(.borderedProminent)
@@ -344,14 +344,16 @@ struct FileConversionView: View {
 
     /// 将秒数格式化为本地化的「X分Y秒」或「Y秒」
     private func formatRemainingTime(_ seconds: Double) -> String {
-        let locale = languageSettings.locale
+        let locale = languageSettings.currentLocale
         let total = Int(ceil(seconds))
         if total >= 60 {
             let m = Int64(total / 60)
             let s = Int64(total % 60)
-            return s > 0 ? locale.tr("%lld分%lld秒", m, s) : locale.tr("%lld分", m)
+            return s > 0
+                ? L10n.string(.commonMinutesSeconds, locale: locale, m, s)
+                : L10n.string(.commonMinutes, locale: locale, m)
         } else {
-            return locale.tr("%lld秒", Int64(total))
+            return L10n.string(.commonSeconds, locale: locale, Int64(total))
         }
     }
 
@@ -369,11 +371,11 @@ struct FileConversionView: View {
                     .controlSize(.large)
                     .tint(.white)
 
-                Text("正在从相册导入...")
+                Text(L10n.text(.commonImportingAlbum))
                     .font(.headline)
                     .foregroundStyle(.white)
 
-                Text("大文件可能需要较长时间")
+                Text(L10n.text(.commonImportingAlbumHint))
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.7))
             }

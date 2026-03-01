@@ -63,9 +63,27 @@ VoiceClear 是一款使用 SwiftUI + AVFoundation 构建的原生应用。项目
 ## 多语言实现
 
 - 文案资源：`Localizable.xcstrings`
-- 语言模型：`AppLanguage`（`zh-Hans` / `zh-Hant` / `en`）
-- App 启动时通过 `.environment(\.locale, languageSettings.locale)` 注入当前语言
-- `Text(LocalizedStringKey)` 与 `LocaleLocalizer` 并行支持，覆盖普通 UI 与运行时提示（如错误、Toast）
+- 稳定 key：`L10nKey`（点分层英文命名，如 `player.error.invalid_http_url`）
+- 统一入口：`L10n.text(...)`（UI）与 `L10n.string(...)`（运行时字符串）
+- 语言配置：`LocalizationConfig`（支持语言与 fallback 语言）
+- 语言状态：`LanguageSettings`（首次启动跟随系统语言；用户选择后持久化到 `app.language`）
+- 缺失翻译策略：先查当前语言 -> 回退 `en` -> 输出 `[missing:key]` 并记录日志（一次）
+
+## 多语言开发规范
+
+### 新增语言
+
+1. 在 `VoiceClear/Localization/LocalizationConfig.swift` 的 `supportedLanguageCodes` 增加语言代码（如 `ja`）
+2. 在 `VoiceClear/Localizable.xcstrings` 为全部 key 增加该语言翻译
+3. 如有系统权限文案，补充 `VoiceClear/InfoPlist.xcstrings`
+4. 运行 `./scripts/l10n_audit.sh`
+
+### 新增文案
+
+1. 在 `VoiceClear/Localization/L10nKey.swift` 新增稳定 key（按模块命名）
+2. 在 `VoiceClear/Localizable.xcstrings` 增加对应翻译（`en/zh-Hans/zh-Hant`）
+3. 代码中使用 `L10n.text(.newKey)` 或 `L10n.string(.newKey, ...)`，不要直接写硬编码文案
+4. 运行 `./scripts/l10n_audit.sh` 检查硬编码与翻译缺失
 
 ## 支持格式与输出规则
 
@@ -83,6 +101,10 @@ VoiceClear/
 ├── VoiceClearApp.swift
 ├── ContentView.swift
 ├── Localizable.xcstrings
+├── Localization/
+│   ├── L10nKey.swift
+│   ├── L10n.swift
+│   └── LocalizationConfig.swift
 ├── Models/
 │   ├── AudioFileItem.swift
 │   └── LanguageSettings.swift

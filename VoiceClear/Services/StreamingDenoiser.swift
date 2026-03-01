@@ -116,11 +116,11 @@ final class StreamingDenoiser: StreamingAudioPipeline, @unchecked Sendable {
         }
 
         guard let monoData = monoBuffer.floatChannelData?[0] else {
-            throw StreamingDenoiserError.conversionFailed("无法读取单声道数据")
+            throw StreamingDenoiserError.conversionFailed(L10n.string(.serviceErrorReadMonoDataFailed))
         }
         let sampleCount = Int(monoBuffer.frameLength)
         guard sampleCount > 0 else {
-            throw StreamingDenoiserError.conversionFailed("解码后数据为空")
+            throw StreamingDenoiserError.conversionFailed(L10n.string(.serviceErrorDecodedDataEmpty))
         }
 
         // 2. RNNoise 逐帧降噪
@@ -162,7 +162,7 @@ final class StreamingDenoiser: StreamingAudioPipeline, @unchecked Sendable {
         }
 
         guard stereoBuffer.frameLength > 0 else {
-            throw StreamingDenoiserError.conversionFailed("解码后数据为空")
+            throw StreamingDenoiserError.conversionFailed(L10n.string(.serviceErrorDecodedDataEmpty))
         }
 
         lock.lock()
@@ -249,24 +249,24 @@ final class StreamingDenoiser: StreamingAudioPipeline, @unchecked Sendable {
             maxFrames = remaining
         }
         guard maxFrames > 0 else {
-            throw StreamingDenoiserError.conversionFailed("无可读取的音频帧")
+            throw StreamingDenoiserError.conversionFailed(L10n.string(.serviceErrorNoReadableAudioFrames))
         }
 
         guard let inputBuffer = AVAudioPCMBuffer(pcmFormat: inputFormat, frameCapacity: maxFrames) else {
-            throw StreamingDenoiserError.conversionFailed("无法创建输入缓冲区")
+            throw StreamingDenoiserError.conversionFailed(L10n.string(.serviceErrorInputBufferCreationFailed))
         }
         try inputFile.read(into: inputBuffer, frameCount: maxFrames)
 
         // 转换为 48kHz 单声道
         let monoFormat = Self.rnnoiseMonoFormat
         guard let converter = AVAudioConverter(from: inputFormat, to: monoFormat) else {
-            throw StreamingDenoiserError.conversionFailed("无法创建格式转换器")
+            throw StreamingDenoiserError.conversionFailed(L10n.string(.serviceErrorConverterCreationFailed))
         }
 
         let ratio = RNNoiseProcessor.sampleRate / inputSR
         let outCapacity = AVAudioFrameCount(Double(inputBuffer.frameLength) * ratio) + 256
         guard let outputBuffer = AVAudioPCMBuffer(pcmFormat: monoFormat, frameCapacity: outCapacity) else {
-            throw StreamingDenoiserError.conversionFailed("无法创建输出缓冲区")
+            throw StreamingDenoiserError.conversionFailed(L10n.string(.serviceErrorOutputBufferCreationFailed))
         }
 
         var isDone = false
@@ -322,7 +322,7 @@ final class StreamingDenoiser: StreamingAudioPipeline, @unchecked Sendable {
 
         guard reader.startReading() else {
             throw StreamingDenoiserError.conversionFailed(
-                reader.error?.localizedDescription ?? "AVAssetReader 启动失败"
+                reader.error?.localizedDescription ?? L10n.string(.serviceErrorAssetReaderStartFailed)
             )
         }
 
@@ -348,7 +348,7 @@ final class StreamingDenoiser: StreamingAudioPipeline, @unchecked Sendable {
         // 转为 AVAudioPCMBuffer
         let monoFormat = Self.rnnoiseMonoFormat
         guard let buffer = AVAudioPCMBuffer(pcmFormat: monoFormat, frameCapacity: AVAudioFrameCount(allSamples.count)) else {
-            throw StreamingDenoiserError.conversionFailed("无法创建单声道缓冲区")
+            throw StreamingDenoiserError.conversionFailed(L10n.string(.serviceErrorMonoBufferCreationFailed))
         }
         buffer.frameLength = AVAudioFrameCount(allSamples.count)
         allSamples.withUnsafeBufferPointer { src in
@@ -383,23 +383,23 @@ final class StreamingDenoiser: StreamingAudioPipeline, @unchecked Sendable {
             maxFrames = remaining
         }
         guard maxFrames > 0 else {
-            throw StreamingDenoiserError.conversionFailed("无可读取的音频帧")
+            throw StreamingDenoiserError.conversionFailed(L10n.string(.serviceErrorNoReadableAudioFrames))
         }
 
         guard let inputBuffer = AVAudioPCMBuffer(pcmFormat: inputFormat, frameCapacity: maxFrames) else {
-            throw StreamingDenoiserError.conversionFailed("无法创建输入缓冲区")
+            throw StreamingDenoiserError.conversionFailed(L10n.string(.serviceErrorInputBufferCreationFailed))
         }
         try inputFile.read(into: inputBuffer, frameCount: maxFrames)
 
         let stereoFormat = Self.outputFormat
         guard let converter = AVAudioConverter(from: inputFormat, to: stereoFormat) else {
-            throw StreamingDenoiserError.conversionFailed("无法创建格式转换器")
+            throw StreamingDenoiserError.conversionFailed(L10n.string(.serviceErrorConverterCreationFailed))
         }
 
         let ratio = Self.sampleRate / inputSR
         let outCapacity = AVAudioFrameCount(Double(inputBuffer.frameLength) * ratio) + 256
         guard let outputBuffer = AVAudioPCMBuffer(pcmFormat: stereoFormat, frameCapacity: outCapacity) else {
-            throw StreamingDenoiserError.conversionFailed("无法创建输出缓冲区")
+            throw StreamingDenoiserError.conversionFailed(L10n.string(.serviceErrorOutputBufferCreationFailed))
         }
 
         var isDone = false
@@ -456,7 +456,7 @@ final class StreamingDenoiser: StreamingAudioPipeline, @unchecked Sendable {
 
         guard reader.startReading() else {
             throw StreamingDenoiserError.conversionFailed(
-                reader.error?.localizedDescription ?? "AVAssetReader 启动失败"
+                reader.error?.localizedDescription ?? L10n.string(.serviceErrorAssetReaderStartFailed)
             )
         }
 
@@ -484,12 +484,12 @@ final class StreamingDenoiser: StreamingAudioPipeline, @unchecked Sendable {
         // 交错 → 非交错
         let frameCount = interleavedSamples.count / channelCount
         guard frameCount > 0 else {
-            throw StreamingDenoiserError.conversionFailed("视频音频解码后数据为空")
+            throw StreamingDenoiserError.conversionFailed(L10n.string(.serviceErrorVideoAudioDecodedEmpty))
         }
 
         let stereoFormat = Self.outputFormat
         guard let buffer = AVAudioPCMBuffer(pcmFormat: stereoFormat, frameCapacity: AVAudioFrameCount(frameCount)) else {
-            throw StreamingDenoiserError.conversionFailed("无法创建立体声缓冲区")
+            throw StreamingDenoiserError.conversionFailed(L10n.string(.serviceErrorStereoBufferCreationFailed))
         }
         buffer.frameLength = AVAudioFrameCount(frameCount)
 
@@ -558,7 +558,7 @@ final class StreamingDenoiser: StreamingAudioPipeline, @unchecked Sendable {
     private func monoToStereoBuffer(_ monoSamples: [Float], count: Int) throws -> AVAudioPCMBuffer {
         let stereoFormat = Self.outputFormat
         guard let buffer = AVAudioPCMBuffer(pcmFormat: stereoFormat, frameCapacity: AVAudioFrameCount(count)) else {
-            throw StreamingDenoiserError.conversionFailed("无法创建立体声缓冲区")
+            throw StreamingDenoiserError.conversionFailed(L10n.string(.serviceErrorStereoBufferCreationFailed))
         }
         buffer.frameLength = AVAudioFrameCount(count)
 
@@ -583,7 +583,7 @@ enum StreamingDenoiserError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .conversionFailed(let msg):
-            return "音频转换失败: \(msg)"
+            return L10n.string(.serviceErrorConversionFailed, msg)
         }
     }
 }

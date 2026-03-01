@@ -16,11 +16,11 @@ enum AVAssetAsyncLoaderError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .timeout(let target):
-            return "加载媒体信息超时: \(target)"
+            return L10n.string(.serviceErrorAsyncLoadTimeout, target)
         case .noTrack(let type):
-            return "未找到媒体轨道: \(type.rawValue)"
+            return L10n.string(.serviceErrorNoMediaTrack, type.rawValue)
         case .unknown:
-            return "加载媒体信息失败"
+            return L10n.string(.serviceErrorMediaLoadFailed)
         }
     }
 }
@@ -81,4 +81,3 @@ enum AVAssetAsyncLoader {
         }
     }
 }
-

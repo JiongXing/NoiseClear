@@ -97,7 +97,7 @@ final class FFmpegDenoiser: Sendable {
         let sourceFrameCount = AVAudioFrameCount(sourceFile.length)
 
         guard let sourceBuffer = AVAudioPCMBuffer(pcmFormat: sourceFormat, frameCapacity: sourceFrameCount) else {
-            throw FFmpegDenoiserError.processingFailed("无法创建源音频缓冲区")
+            throw FFmpegDenoiserError.processingFailed(L10n.string(.serviceErrorInputBufferCreationFailed))
         }
         try sourceFile.read(into: sourceBuffer)
         onProgress(0.02)
@@ -111,13 +111,13 @@ final class FFmpegDenoiser: Sendable {
         )!
 
         guard let converter = AVAudioConverter(from: sourceFormat, to: monoFormat) else {
-            throw FFmpegDenoiserError.processingFailed("无法创建格式转换器")
+            throw FFmpegDenoiserError.processingFailed(L10n.string(.serviceErrorConverterCreationFailed))
         }
 
         let ratio = RNNoiseProcessor.sampleRate / sourceFormat.sampleRate
         let outCapacity = AVAudioFrameCount(Double(sourceFrameCount) * ratio) + 256
         guard let monoBuffer = AVAudioPCMBuffer(pcmFormat: monoFormat, frameCapacity: outCapacity) else {
-            throw FFmpegDenoiserError.processingFailed("无法创建单声道缓冲区")
+            throw FFmpegDenoiserError.processingFailed(L10n.string(.serviceErrorMonoBufferCreationFailed))
         }
 
         var isDone = false
@@ -136,7 +136,7 @@ final class FFmpegDenoiser: Sendable {
 
         // 3. RNNoise 逐帧降噪
         guard let monoData = monoBuffer.floatChannelData?[0] else {
-            throw FFmpegDenoiserError.processingFailed("无法读取单声道数据")
+            throw FFmpegDenoiserError.processingFailed(L10n.string(.serviceErrorReadMonoDataFailed))
         }
         let sampleCount = Int(monoBuffer.frameLength)
         let denoisedSamples = try denoiseRawSamples(
@@ -147,7 +147,7 @@ final class FFmpegDenoiser: Sendable {
 
         // 4. 降采样到输出采样率（16kHz）并写入
         guard let denoisedBuffer = AVAudioPCMBuffer(pcmFormat: monoFormat, frameCapacity: AVAudioFrameCount(sampleCount)) else {
-            throw FFmpegDenoiserError.processingFailed("无法创建降噪缓冲区")
+            throw FFmpegDenoiserError.processingFailed(L10n.string(.serviceErrorOutputBufferCreationFailed))
         }
         denoisedBuffer.frameLength = AVAudioFrameCount(sampleCount)
         denoisedSamples.withUnsafeBufferPointer { src in
@@ -162,13 +162,13 @@ final class FFmpegDenoiser: Sendable {
         )!
 
         guard let outConverter = AVAudioConverter(from: monoFormat, to: outputFormat) else {
-            throw FFmpegDenoiserError.processingFailed("无法创建输出格式转换器")
+            throw FFmpegDenoiserError.processingFailed(L10n.string(.serviceErrorConverterCreationFailed))
         }
 
         let outRatio = Self.outputSampleRate / RNNoiseProcessor.sampleRate
         let finalCapacity = AVAudioFrameCount(Double(sampleCount) * outRatio) + 256
         guard let finalBuffer = AVAudioPCMBuffer(pcmFormat: outputFormat, frameCapacity: finalCapacity) else {
-            throw FFmpegDenoiserError.processingFailed("无法创建输出缓冲区")
+            throw FFmpegDenoiserError.processingFailed(L10n.string(.serviceErrorOutputBufferCreationFailed))
         }
 
         var outDone = false
@@ -235,7 +235,7 @@ final class FFmpegDenoiser: Sendable {
 
         guard audioReader.startReading() else {
             throw FFmpegDenoiserError.processingFailed(
-                audioReader.error?.localizedDescription ?? "音频读取启动失败"
+                audioReader.error?.localizedDescription ?? L10n.string(.serviceErrorAudioReadStartFailed)
             )
         }
 
@@ -259,7 +259,7 @@ final class FFmpegDenoiser: Sendable {
         onProgress(0.03)
 
         guard !allSamples.isEmpty else {
-            throw FFmpegDenoiserError.processingFailed("视频音频轨道无有效数据")
+            throw FFmpegDenoiserError.processingFailed(L10n.string(.serviceErrorVideoAudioDataEmpty))
         }
 
         // RNNoise 降噪
@@ -284,7 +284,7 @@ final class FFmpegDenoiser: Sendable {
 
         guard videoReader.startReading() else {
             throw FFmpegDenoiserError.processingFailed(
-                videoReader.error?.localizedDescription ?? "视频读取启动失败"
+                videoReader.error?.localizedDescription ?? L10n.string(.serviceErrorVideoReadStartFailed)
             )
         }
 
@@ -395,7 +395,7 @@ final class FFmpegDenoiser: Sendable {
 
         guard writer.status == .completed else {
             throw FFmpegDenoiserError.writerFailed(
-                writer.error?.localizedDescription ?? "视频写入完成状态异常"
+                writer.error?.localizedDescription ?? L10n.string(.serviceErrorVideoWriteCompletionUnexpected)
             )
         }
 
@@ -573,15 +573,15 @@ enum FFmpegDenoiserError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .outputFileMissing:
-            return "处理完成但输出文件不存在"
+            return L10n.string(.serviceErrorOutputFileMissing)
         case .processingFailed(let msg):
-            return "音频处理失败: \(msg)"
+            return L10n.string(.serviceErrorAudioProcessingFailed, msg)
         case .noVideoTrack:
-            return "视频文件中未找到视频轨道"
+            return L10n.string(.serviceErrorVideoTrackMissing)
         case .noAudioTrack:
-            return "视频文件中未找到音频轨道"
+            return L10n.string(.serviceErrorAudioTrackMissing)
         case .writerFailed(let msg):
-            return "视频写入失败: \(msg)"
+            return L10n.string(.serviceErrorVideoWriteFailed, msg)
         }
     }
 }

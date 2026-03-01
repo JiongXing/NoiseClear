@@ -197,9 +197,9 @@ enum RNNoiseError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .modelLoadFailed(let path):
-            return "无法加载 RNNoise 模型文件: \(path)"
+            return L10n.string(.serviceErrorRNNoiseModelLoadFailed, path)
         case .createFailed:
-            return "无法创建 RNNoise 降噪实例"
+            return L10n.string(.serviceErrorRNNoiseCreateFailed)
         }
     }
 }

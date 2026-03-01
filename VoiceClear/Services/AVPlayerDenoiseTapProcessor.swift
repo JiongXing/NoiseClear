@@ -66,7 +66,7 @@ final class AVPlayerDenoiseTapProcessor {
         }
         guard let audioTrack = tracks.first else {
             throw NSError(domain: "AVPlayerDenoiseTapProcessor", code: -1, userInfo: [
-                NSLocalizedDescriptionKey: "未找到可处理的音轨"
+                NSLocalizedDescriptionKey: L10n.string(.serviceErrorAudioTapNoTrack)
             ])
         }
 
@@ -105,7 +105,7 @@ final class AVPlayerDenoiseTapProcessor {
         )
         guard status == noErr, let tap else {
             throw NSError(domain: "AVPlayerDenoiseTapProcessor", code: Int(status), userInfo: [
-                NSLocalizedDescriptionKey: "无法创建音频处理 Tap"
+                NSLocalizedDescriptionKey: L10n.string(.serviceErrorAudioTapCreateFailed)
             ])
         }
 
@@ -412,4 +412,3 @@ private func tapProcess(
     let owner = Unmanaged<AVPlayerDenoiseTapProcessor>.fromOpaque(storage).takeUnretainedValue()
     owner.processAudioList(bufferListInOut, frameCount: Int(numberFramesOut.pointee))
 }
-

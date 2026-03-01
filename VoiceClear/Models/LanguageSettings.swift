@@ -1,48 +1,31 @@
-//
-//  LanguageSettings.swift
-//  VoiceClear
-//
-//  Created by Cursor on 2026/2/28.
-//
-
+import Combine
 import Foundation
 import SwiftUI
-import Combine
 
-enum AppLanguage: String, CaseIterable, Identifiable {
-    case simplifiedChinese = "zh-Hans"
-    case traditionalChinese = "zh-Hant"
-    case english = "en"
+struct AppLanguage: Identifiable, Hashable {
+    let code: String
 
-    var id: String { rawValue }
+    var id: String { code }
+    var locale: Locale { Locale(identifier: code) }
 
-    var locale: Locale {
-        Locale(identifier: rawValue)
-    }
-
-    /// 本地化键（供 Text(LocalizedStringKey) 使用，可响应 environment locale 变更）
-    var nameKey: String {
-        switch self {
-        case .simplifiedChinese: return "简体中文"
-        case .traditionalChinese: return "繁體中文"
-        case .english: return "English"
+    var nameKey: L10nKey {
+        switch code {
+        case "zh-Hans": return .settingsLanguageNameZhHans
+        case "zh-Hant": return .settingsLanguageNameZhHant
+        default: return .settingsLanguageNameEn
         }
     }
 
-    var subtitleKey: String {
-        switch self {
-        case .simplifiedChinese: return "推荐中国大陆用户"
-        case .traditionalChinese: return "推薦繁體中文使用者"
-        case .english: return "Recommended for global users"
+    var subtitleKey: L10nKey {
+        switch code {
+        case "zh-Hans": return .settingsLanguageSubtitleZhHans
+        case "zh-Hant": return .settingsLanguageSubtitleZhHant
+        default: return .settingsLanguageSubtitleEn
         }
     }
 
-    var localizedName: String {
-        String(localized: String.LocalizationValue(stringLiteral: nameKey))
-    }
-
-    var localizedSubtitle: String {
-        String(localized: String.LocalizationValue(stringLiteral: subtitleKey))
+    static var supported: [AppLanguage] {
+        LocalizationConfig.supportedLanguageCodes.map { AppLanguage(code: $0) }
     }
 }
 
@@ -54,58 +37,24 @@ final class LanguageSettings: ObservableObject {
     @Published var selectedLanguage: AppLanguage {
         didSet {
             guard oldValue != selectedLanguage else { return }
-            UserDefaults.standard.set(selectedLanguage.rawValue, forKey: Keys.appLanguage)
+            UserDefaults.standard.set(selectedLanguage.code, forKey: Keys.appLanguage)
+            L10n.setCurrentLocale(selectedLanguage.locale)
         }
     }
+
+    var currentLocale: Locale { selectedLanguage.locale }
+    var locale: Locale { currentLocale }
+    var availableLanguages: [AppLanguage] { AppLanguage.supported }
 
     init() {
-        let storedValue = UserDefaults.standard.string(forKey: Keys.appLanguage)
-        selectedLanguage = AppLanguage(rawValue: storedValue ?? "") ?? .simplifiedChinese
-    }
-
-    var locale: Locale { selectedLanguage.locale }
-
-    /// 运行时按当前应用语言获取本地化字符串
-    func tr(_ key: String) -> String {
-        LocaleLocalizer.string(for: key, locale: locale)
-    }
-
-    /// 运行时按当前应用语言获取并格式化本地化字符串
-    func tr(_ key: String, _ args: CVarArg...) -> String {
-        String(format: tr(key), locale: locale, arguments: args)
-    }
-}
-
-extension AppLanguage {
-    /// 按指定语言获取本地化字符串（适合 onChange 中基于新语言立即取文案）
-    func tr(_ key: String) -> String {
-        LocaleLocalizer.string(for: key, locale: locale)
-    }
-
-    func tr(_ key: String, _ args: CVarArg...) -> String {
-        String(format: tr(key), locale: locale, arguments: args)
-    }
-}
-
-extension Locale {
-    /// 按当前 Locale 获取本地化字符串
-    func tr(_ key: String) -> String {
-        LocaleLocalizer.string(for: key, locale: self)
-    }
-
-    func tr(_ key: String, _ args: CVarArg...) -> String {
-        String(format: tr(key), locale: self, arguments: args)
-    }
-}
-
-// MARK: - 运行时 locale 指定本地化（用于 Toast 等非 Text 场景）
-enum LocaleLocalizer {
-    static func string(for key: String, locale: Locale) -> String {
-        let id = locale.identifier
-        guard let path = Bundle.main.path(forResource: id, ofType: "lproj"),
-              let bundle = Bundle(path: path) else {
-            return NSLocalizedString(key, comment: "")
+        let storedCode = UserDefaults.standard.string(forKey: Keys.appLanguage)
+        if let code = storedCode,
+           let matched = LocalizationConfig.matchSupportedLanguage(for: code) {
+            selectedLanguage = AppLanguage(code: matched)
+        } else {
+            let best = LocalizationConfig.bestMatch(preferredLanguages: Locale.preferredLanguages)
+            selectedLanguage = AppLanguage(code: best)
         }
-        return bundle.localizedString(forKey: key, value: NSLocalizedString(key, comment: ""), table: nil)
+        L10n.setCurrentLocale(selectedLanguage.locale)
     }
 }

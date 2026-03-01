@@ -120,7 +120,7 @@ final class PlayerViewModel {
 
         let ext = url.pathExtension.lowercased()
         guard kAllSupportedExtensions.contains(ext) else {
-            showErrorMessage(String(format: String(localized: "Unsupported format: .%@"), ext))
+            showErrorMessage(L10n.string(.playerErrorUnsupportedFormat, ext))
             return
         }
 
@@ -136,7 +136,7 @@ final class PlayerViewModel {
             seekOffset = 0
             isFinished = false
             isRemoteStream = false
-            streamStatusText = String(localized: "本地文件模式")
+            streamStatusText = L10n.string(.playerStreamLocalFileMode)
 
             if isVideo {
                 let player = AVPlayer(url: url)
@@ -149,43 +149,43 @@ final class PlayerViewModel {
             playbackPath = .localEngine
         } catch {
             if securityScoped { url.stopAccessingSecurityScopedResource() }
-            showErrorMessage(String(format: String(localized: "Cannot read file: %@"), error.localizedDescription))
+            showErrorMessage(L10n.string(.playerErrorCannotReadFile, error.localizedDescription))
         }
     }
 
     func loadFromURL() async {
         let trimmed = urlInputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            showErrorMessage(String(localized: "Please enter a valid URL"))
+            showErrorMessage(L10n.string(.playerErrorInvalidURL))
             return
         }
         guard let url = URL(string: trimmed),
               let scheme = url.scheme?.lowercased(),
               ["http", "https"].contains(scheme) else {
-            showErrorMessage(String(localized: "Please enter a valid HTTP/HTTPS URL"))
+            showErrorMessage(L10n.string(.playerErrorInvalidHTTPURL))
             return
         }
 
         isDownloading = true
-        streamStatusText = String(localized: "在线资源加载中...")
+        streamStatusText = L10n.string(.playerStreamRemoteLoading)
         defer { isDownloading = false }
         do {
             try await prepareRemoteStream(url: url)
         } catch {
             let nsError = error as NSError
             if nsError.domain == NSURLErrorDomain, nsError.code == NSURLErrorFileDoesNotExist {
-                showErrorMessage(String(localized: "在线资源不存在或已过期，请更换可访问的音频地址"))
+                showErrorMessage(L10n.string(.playerStreamRemoteMissing))
                 clearLoadedMediaState()
                 return
             }
             // 回退到旧模式：下载后本地播放，保障可用性。
             do {
                 playbackMetrics.fallbackReason = "remote_stream_prepare_failed"
-                streamStatusText = String(localized: "回退：下载后播放")
+                streamStatusText = L10n.string(.playerStreamFallbackDownloadLocal)
                 let localURL = try await downloadRemoteFile(from: url)
                 await loadFile(url: localURL)
             } catch {
-                showErrorMessage(String(format: String(localized: "Download failed: %@"), error.localizedDescription))
+                showErrorMessage(L10n.string(.playerErrorDownloadFailed, error.localizedDescription))
                 clearLoadedMediaState()
             }
         }
@@ -194,7 +194,7 @@ final class PlayerViewModel {
     private func prepareRemoteStream(url: URL) async throws {
         stop()
         currentFile = url
-        fileName = url.lastPathComponent.isEmpty ? String(localized: "Online Stream") : url.lastPathComponent
+        fileName = url.lastPathComponent.isEmpty ? L10n.string(.playerOnlineStreamName) : url.lastPathComponent
         currentTime = 0
         seekOffset = 0
         isFinished = false
@@ -217,7 +217,7 @@ final class PlayerViewModel {
                 )
                 try await tap.attach(to: item)
                 remoteTapProcessor = tap
-                streamStatusText = String(localized: "在线真流式（降噪）")
+                streamStatusText = L10n.string(.playerStreamRemoteDenoise)
             } catch {
                 let nsError = error as NSError
                 if nsError.domain == NSURLErrorDomain, nsError.code == NSURLErrorFileDoesNotExist {
@@ -226,11 +226,11 @@ final class PlayerViewModel {
                 remoteTapProcessor = nil
                 playbackMetrics.usedPassthrough = true
                 playbackMetrics.fallbackReason = "audio_tap_attach_failed"
-                streamStatusText = String(localized: "在线真流式（原声）")
+                streamStatusText = L10n.string(.playerStreamRemoteOriginal)
             }
         } else {
             remoteTapProcessor = nil
-            streamStatusText = String(localized: "在线真流式（原声）")
+            streamStatusText = L10n.string(.playerStreamRemoteOriginal)
         }
 
         avPlayer = player
@@ -283,7 +283,7 @@ final class PlayerViewModel {
     private func playRemoteStream(token: UUID) async {
         guard let avPlayer else {
             isLoading = false
-            showErrorMessage(String(localized: "Remote player unavailable"))
+            showErrorMessage(L10n.string(.playerErrorRemoteUnavailable))
             return
         }
 
@@ -354,7 +354,7 @@ final class PlayerViewModel {
 
             guard prefilled > 0 else {
                 throw NSError(domain: "PlayerViewModel", code: -2, userInfo: [
-                    NSLocalizedDescriptionKey: String(localized: "Cannot read audio data")
+                    NSLocalizedDescriptionKey: L10n.string(.playerErrorCannotReadAudioData)
                 ])
             }
 
@@ -394,7 +394,7 @@ final class PlayerViewModel {
             )
         } catch {
             isLoading = false
-            showErrorMessage(String(format: String(localized: "Playback failed: %@"), error.localizedDescription))
+            showErrorMessage(L10n.string(.playerErrorPlaybackFailed, error.localizedDescription))
         }
     }
 
@@ -577,7 +577,7 @@ final class PlayerViewModel {
             let ms = Date().timeIntervalSince(start) * 1000
             playbackMetrics.startupLatencyMs = ms
             if ms > releaseGate.startupLatencyMs {
-                streamStatusText = String(localized: "首帧偏慢，建议回退策略")
+                streamStatusText = L10n.string(.playerStreamStartupSlow)
             }
         }
     }
@@ -608,7 +608,7 @@ final class PlayerViewModel {
         if let httpResponse = response as? HTTPURLResponse,
            !(200...299).contains(httpResponse.statusCode) {
             throw NSError(domain: "PlayerViewModel", code: httpResponse.statusCode, userInfo: [
-                NSLocalizedDescriptionKey: String(format: String(localized: "Server returned error (%d)"), httpResponse.statusCode)
+                NSLocalizedDescriptionKey: L10n.string(.playerErrorServerError, httpResponse.statusCode)
             ])
         }
 

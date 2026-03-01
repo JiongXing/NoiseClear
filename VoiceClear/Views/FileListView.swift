@@ -47,7 +47,7 @@ struct FileListView: View {
             Image(systemName: "music.note.list")
                 .font(.title2)
                 .foregroundStyle(.tertiary)
-            Text("暂无媒体文件")
+            Text(L10n.text(.fileListEmpty))
                 .font(.subheadline)
                 .foregroundStyle(.tertiary)
         }
@@ -90,7 +90,7 @@ struct AudioFileRow: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
-                    Text(file.status.displayText(locale: languageSettings.locale))
+                    Text(file.status.displayText(locale: languageSettings.currentLocale))
                         .font(.caption)
                         .foregroundStyle(statusColor)
                 }
@@ -118,7 +118,7 @@ struct AudioFileRow: View {
                     }
                     .buttonStyle(.borderless)
                     #if os(macOS)
-                    .help("导出文件")
+                    .help(L10n.string(.fileListExport))
                     #endif
                 }
 
@@ -135,7 +135,7 @@ struct AudioFileRow: View {
                     .buttonStyle(.borderless)
                     #if os(macOS)
                     .opacity(isHovered ? 1 : 0)
-                    .help("移除文件")
+                    .help(L10n.string(.fileListRemove))
                     #endif
                 }
             }
@@ -162,7 +162,7 @@ struct AudioFileRow: View {
                 Button {
                     onExport()
                 } label: {
-                    Label("导出文件", systemImage: "square.and.arrow.up")
+                    Label(L10n.string(.fileListExport), systemImage: "square.and.arrow.up")
                 }
             }
 
@@ -171,22 +171,22 @@ struct AudioFileRow: View {
                 Button(role: .destructive) {
                     onRemove()
                 } label: {
-                    Label("移除文件", systemImage: "trash")
+                    Label(L10n.string(.fileListRemove), systemImage: "trash")
                 }
             }
         }
         // 删除确认弹窗，防止误触
         .confirmationDialog(
-            languageSettings.tr("确认移除"),
+            L10n.string(.fileListConfirmRemoveTitle, locale: languageSettings.currentLocale),
             isPresented: $showRemoveConfirmation,
             titleVisibility: .visible
         ) {
-            Button(languageSettings.tr("移除"), role: .destructive) {
+            Button(L10n.string(.fileListRemove, locale: languageSettings.currentLocale), role: .destructive) {
                 onRemove()
             }
-            Button(languageSettings.tr("取消"), role: .cancel) {}
+            Button(L10n.string(.commonCancel, locale: languageSettings.currentLocale), role: .cancel) {}
         } message: {
-            Text(languageSettings.tr("确定要移除「%@」吗？", file.fileName))
+            Text(L10n.string(.fileListConfirmRemoveMessage, locale: languageSettings.currentLocale, file.fileName))
         }
         #if os(macOS)
         .onHover { hovering in

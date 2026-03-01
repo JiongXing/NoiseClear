@@ -11,25 +11,24 @@ import SwiftUI
 
 /// 应用的功能模块
 enum FeatureItem: String, CaseIterable, Identifiable, Hashable {
-    case denoisePlayer = "降噪播放"
-    case fileConversion = "文件转换"
+    case denoisePlayer
+    case fileConversion
 
     var id: String { rawValue }
 
-    /// 功能描述本地化键（供 Text(LocalizedStringKey) 使用）
-    var subtitleKey: String {
+    var titleKey: L10nKey {
         switch self {
-        case .denoisePlayer:  return "实时降噪 · 边播边听"
-        case .fileConversion: return "批量降噪 · 导出文件"
+        case .denoisePlayer:  return .homeFeatureDenoisePlayerTitle
+        case .fileConversion: return .homeFeatureFileConversionTitle
         }
     }
 
-    var localizedTitle: String {
-        String(localized: String.LocalizationValue(stringLiteral: rawValue))
-    }
-
-    var localizedSubtitle: String {
-        String(localized: String.LocalizationValue(stringLiteral: subtitleKey))
+    /// 功能描述本地化键
+    var subtitleKey: L10nKey {
+        switch self {
+        case .denoisePlayer:  return .homeFeatureDenoisePlayerSubtitle
+        case .fileConversion: return .homeFeatureFileConversionSubtitle
+        }
     }
 
     /// 功能图标
@@ -39,9 +38,6 @@ enum FeatureItem: String, CaseIterable, Identifiable, Hashable {
         case .fileConversion: return "doc.on.doc.fill"
         }
     }
-
-    /// 功能描述（已本地化）
-    var subtitle: String { localizedSubtitle }
 
     /// 卡片渐变色
     var gradient: [Color] {
@@ -70,15 +66,15 @@ struct ContentView: View {
                         switch item {
                         case .denoisePlayer:
                             DenoisePlayerView()
-                                .navigationTitle(languageSettings.tr(item.rawValue))
+                                .navigationTitle(L10n.string(item.titleKey, locale: languageSettings.currentLocale))
                                 #if os(macOS)
-                                .navigationSubtitle(languageSettings.tr(item.subtitleKey))
+                                .navigationSubtitle(L10n.string(item.subtitleKey, locale: languageSettings.currentLocale))
                                 #endif
                         case .fileConversion:
                             FileConversionView()
-                                .navigationTitle(languageSettings.tr(item.rawValue))
+                                .navigationTitle(L10n.string(item.titleKey, locale: languageSettings.currentLocale))
                                 #if os(macOS)
-                                .navigationSubtitle(languageSettings.tr(item.subtitleKey))
+                                .navigationSubtitle(L10n.string(item.subtitleKey, locale: languageSettings.currentLocale))
                                 #endif
                         }
                     }
@@ -108,7 +104,7 @@ struct ContentView: View {
                         .zIndex(3)
                 }
             }
-            .environment(\.locale, languageSettings.locale)
+            .environment(\.locale, languageSettings.currentLocale)
             #if os(macOS)
             .onExitCommand {
                 guard isSettingsPresented else { return }
@@ -116,8 +112,8 @@ struct ContentView: View {
             }
             #endif
             .onChange(of: languageSettings.selectedLanguage) { _, newLanguage in
-                let name = newLanguage.tr(newLanguage.nameKey)
-                languageToastText = newLanguage.tr("语言已切换为 %@", name)
+                let name = L10n.string(newLanguage.nameKey, locale: newLanguage.locale)
+                languageToastText = L10n.string(.settingsLanguageSwitchedTo, locale: newLanguage.locale, name)
                 withAnimation(.easeOut(duration: 0.2)) {
                     showLanguageToast = true
                 }
@@ -173,11 +169,11 @@ struct ContentView: View {
                 )
                 .symbolEffect(.pulse, options: .repeating.speed(0.5))
 
-            Text("Voice Clear")
+            Text(L10n.text(.homeAppName))
                 .font(.largeTitle)
                 .fontWeight(.bold)
 
-            Text("AI 音频降噪工具")
+            Text(L10n.text(.homeAppSubtitle))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
@@ -204,7 +200,7 @@ struct ContentView: View {
                 }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(Text("设置"))
+        .accessibilityLabel(Text(L10n.text(.homeSettingsAccessibility)))
     }
 
     private var settingsMask: some View {
@@ -297,11 +293,11 @@ struct ContentView: View {
 
                 // 文字区域
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(LocalizedStringKey(item.rawValue))
+                    Text(L10n.text(item.titleKey))
                         .font(.headline)
                         .foregroundStyle(.primary)
 
-                    Text(LocalizedStringKey(item.subtitleKey))
+                    Text(L10n.text(item.subtitleKey))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -330,7 +326,7 @@ struct ContentView: View {
     // MARK: - 底部信息
 
     private var footerInfo: some View {
-        Text("版本 1.0 · 基于 RNNoise 引擎")
+        Text(L10n.text(.homeFooterVersion))
             .font(.caption)
             .foregroundStyle(.quaternary)
     }

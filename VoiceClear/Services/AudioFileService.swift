@@ -34,8 +34,8 @@ enum AudioFileService {
     @MainActor
     static func openFilePicker() async -> [URL] {
         let panel = NSOpenPanel()
-        panel.title = String(localized: "Select audio or video files")
-        panel.message = String(localized: "Select one or more audio/video files for denoising")
+        panel.title = L10n.string(.serviceFilePickerTitle)
+        panel.message = L10n.string(.serviceFilePickerMessage)
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
         panel.canChooseFiles = true
@@ -53,7 +53,7 @@ enum AudioFileService {
         allowedContentTypes: [UTType] = [.wav]
     ) async -> URL? {
         let panel = NSSavePanel()
-        panel.title = String(localized: "Export denoised file")
+        panel.title = L10n.string(.serviceSavePanelTitle)
         panel.nameFieldStringValue = suggestedName
         panel.allowedContentTypes = allowedContentTypes
         panel.canCreateDirectories = true
@@ -212,7 +212,7 @@ enum AudioFileService {
 
         guard reader.startReading() else {
             throw AudioFileServiceError.audioExtractionFailed(
-                reader.error?.localizedDescription ?? "AVAssetReader 启动失败"
+                reader.error?.localizedDescription ?? L10n.string(.serviceErrorAssetReaderStartFailed)
             )
         }
 
@@ -263,7 +263,7 @@ enum AudioFileService {
         }
 
         guard FileManager.default.fileExists(atPath: audioURL.path) else {
-            throw AudioFileServiceError.audioExtractionFailed("输出文件不存在")
+            throw AudioFileServiceError.audioExtractionFailed(L10n.string(.serviceErrorOutputFileMissing))
         }
     }
 
@@ -427,19 +427,19 @@ enum AudioFileServiceError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .formatCreationFailed:
-            return "无法创建音频格式"
+            return L10n.string(.serviceErrorFormatCreationFailed)
         case .bufferCreationFailed:
-            return "无法创建音频缓冲区"
+            return L10n.string(.serviceErrorBufferCreationFailed)
         case .converterCreationFailed:
-            return "无法创建音频转换器"
+            return L10n.string(.serviceErrorConverterCreationFailed)
         case .conversionFailed(let msg):
-            return "音频转换失败: \(msg)"
+            return L10n.string(.serviceErrorConversionFailed, msg)
         case .fileNotFound(let path):
-            return "找不到文件: \(path)"
+            return L10n.string(.serviceErrorFileNotFound, path)
         case .audioExtractionFailed(let msg):
-            return "从视频提取音频失败: \(msg)"
+            return L10n.string(.serviceErrorAudioExtractionFailed, msg)
         case .invalidDuration:
-            return "无法读取媒体文件时长"
+            return L10n.string(.serviceErrorInvalidDuration)
         }
     }
 }

@@ -160,7 +160,7 @@ final class IncrementalStreamingDenoiser: StreamingAudioPipeline, @unchecked Sen
             : StreamingDenoiser.outputFormat
 
         guard let converter = AVAudioConverter(from: inputFormat, to: targetFormat) else {
-            throw StreamingDenoiserError.conversionFailed("无法创建增量转换器")
+            throw StreamingDenoiserError.conversionFailed(L10n.string(.serviceErrorIncrementalConverterCreateFailed))
         }
 
         let readChunkFrames: AVAudioFrameCount = 2048
@@ -230,7 +230,7 @@ final class IncrementalStreamingDenoiser: StreamingAudioPipeline, @unchecked Sen
         output.alwaysCopiesSampleData = false
         reader.add(output)
         guard reader.startReading() else {
-            throw StreamingDenoiserError.conversionFailed(reader.error?.localizedDescription ?? "视频增量读取失败")
+            throw StreamingDenoiserError.conversionFailed(reader.error?.localizedDescription ?? L10n.string(.serviceErrorIncrementalVideoReadFailed))
         }
 
         let rnnoise = try RNNoiseProcessor()
@@ -400,4 +400,3 @@ final class IncrementalStreamingDenoiser: StreamingAudioPipeline, @unchecked Sen
     }
 
 }
-

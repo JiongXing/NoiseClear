@@ -128,7 +128,7 @@ final class AudioViewModel {
                 )
                 audioFiles.append(item)
             } catch {
-                showErrorMessage(String(format: String(localized: "Cannot read file %@: %@"), url.lastPathComponent, error.localizedDescription))
+                showErrorMessage(L10n.string(.conversionErrorCannotReadFileDetail, url.lastPathComponent, error.localizedDescription))
             }
         }
     }
@@ -206,7 +206,7 @@ final class AudioViewModel {
         do {
             try AudioFileService.exportFile(from: tempURL, to: saveURL)
         } catch {
-            showErrorMessage(String(format: String(localized: "Export failed: %@"), error.localizedDescription))
+            showErrorMessage(L10n.string(.conversionErrorExportFailed, error.localizedDescription))
         }
         #else
         guard case .completed(let tempURL) = item.status else { return }
@@ -306,7 +306,7 @@ final class AudioViewModel {
             audioFiles[index].status = .failed(error.localizedDescription)
             processingStartTime = nil
             estimatedRemainingSeconds = nil
-            showErrorMessage(String(format: String(localized: "Processing %@ failed: %@"), audioFiles[index].fileName, error.localizedDescription))
+            showErrorMessage(L10n.string(.conversionErrorProcessingFailed, audioFiles[index].fileName, error.localizedDescription))
         }
     }
 
