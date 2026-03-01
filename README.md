@@ -4,7 +4,7 @@
 
 VoiceClear 是一款使用 SwiftUI + AVFoundation 构建的原生应用。项目核心是 RNNoise 实时降噪，围绕低延迟播放、在线可用性与稳定回退进行了工程化封装。
 
-详细技术文档见：[docs/TECHNICAL_SOLUTION.md](docs/TECHNICAL_SOLUTION.md)
+详细技术文档见：[TECHNICAL_SOLUTION.md](TECHNICAL_SOLUTION.md)
 
 ## 主要能力
 

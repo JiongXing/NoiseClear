@@ -1,5 +1,5 @@
 ---
-description: VoiceClear 项目功能与目录结构上下文
+description: VoiceClear 项目上下文与工程约定
 alwaysApply: true
 ---
 
@@ -8,23 +8,34 @@ alwaysApply: true
 ## 项目功能
 
 - VoiceClear 是面向 iOS/macOS 的音视频人声降噪应用，核心引擎为 RNNoise。
-- 支持本地与在线媒体播放场景，优先采用真流式降噪，并提供多级回退保证可用性。
-- 支持音频/视频文件处理：视频轨直通，仅处理音轨，兼顾音质与性能。
+- 支持本地与在线媒体播放场景：优先实时降噪，并提供分级回退保证可用性。
+- 支持音频/视频文件处理：视频轨直通，仅处理音轨，兼顾音质、延迟与稳定性。
+- 支持多语言 UI（`zh-Hans / zh-Hant / en / ja`），文案通过 `L10nKey + L10n` 统一管理。
 
 ## 目录组织约定
 
 - `VoiceClear/Models`：数据模型（如文件元数据、业务实体）。
 - `VoiceClear/ViewModels`：MVVM 业务状态与交互逻辑，不直接承担底层音频处理细节。
-- `VoiceClear/Services`：音频解码、RNNoise 处理、播放调度、在线流式链路与回退策略。
-- `VoiceClear/Views`：SwiftUI 界面层，负责展示与用户交互。
-- `docs/`：技术方案、架构决策与实现说明。
+- `VoiceClear/Services`：音频解码、重采样、RNNoise 处理、播放调度、在线播放链路与回退策略。
+- `VoiceClear/Views`：SwiftUI 界面层，负责展示与用户交互（播放器、文件列表、导入与设置等）。
+- `VoiceClear/Localization`：本地化 key、访问入口与语言配置（`L10nKey`、`L10n`、`LocalizationConfig`）。
+- 根目录文档：`README.md`（总览）与 `TECHNICAL_SOLUTION.md`（技术方案与链路细节）。
+
+## 当前核心实现（高频涉及）
+
+- 本地播放主路径：`IncrementalStreamingDenoiser` + `AudioEnginePlayer`（增量处理 + 小缓冲播放）。
+- 在线播放主路径：`AVPlayerItem` + `MTAudioProcessingTap` + `AVPlayerDenoiseTapProcessor`（实时音轨降噪）。
+- 回退策略入口：`PlayerViewModel`（Tap 降噪失败 -> 在线原声；远端初始化失败 -> 下载后本地播放）。
+- 离线处理入口：`FFmpegDenoiser`（音频导出 WAV，视频保持容器并重写音轨）。
+- 媒体异步加载稳定性：`AVAssetAsyncLoader`（`duration/tracks` 超时与上下文控制）。
 
 ## AI Agent 工作准则
 
 - 新增功能时优先复用 `Services` 的既有能力，避免在 `Views` 中写重业务逻辑。
-- 涉及播放链路、降噪效果或回退策略的改动，先查阅 `docs/TECHNICAL_SOLUTION.md` 与 `README.md`。
+- 涉及播放链路、降噪效果或回退策略的改动，先查阅 `TECHNICAL_SOLUTION.md` 与 `README.md`。
 - 保持 MVVM 边界清晰：UI 状态放在 ViewModel，算法与管线逻辑放在 Services。
-- 优先使用 Swift 并遵循 Apple 平台最佳实践（并发安全、生命周期、可维护性）。
+- 文案改动必须走本地化体系：先加 `L10nKey`，再补 `Localizable.xcstrings`，避免硬编码用户可见字符串。
+- 优先使用 Swift Concurrency（`async/await`）并遵循 Apple 平台最佳实践（并发安全、生命周期、可维护性）。
 
 ## 示例
 
@@ -32,3 +43,8 @@ alwaysApply: true
   - UI 组件放在 `VoiceClear/Views`。
   - 状态与事件流放在 `VoiceClear/ViewModels/PlayerViewModel.swift`。
   - 若需新增缓冲/回退判定逻辑，放在 `VoiceClear/Services` 对应服务中。
+
+- 新增“设置页文案”功能：
+  - key 定义放在 `VoiceClear/Localization/L10nKey.swift`。
+  - 翻译补齐在 `VoiceClear/Localizable.xcstrings`。
+  - 视图通过 `L10n.text(...)` 或 `L10n.string(...)` 取值，不直接硬编码字符串。
