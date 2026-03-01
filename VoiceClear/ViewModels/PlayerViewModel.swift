@@ -126,7 +126,7 @@ final class PlayerViewModel {
 
         let securityScoped = url.startAccessingSecurityScopedResource()
         do {
-            let fileDuration = try AudioFileService.getMediaDuration(url: url)
+            let fileDuration = try await AudioFileService.getMediaDuration(url: url)
             currentFile = url
             hasSecurityScopedAccess = securityScoped
             fileName = url.lastPathComponent

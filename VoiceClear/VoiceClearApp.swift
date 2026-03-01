@@ -18,7 +18,7 @@ struct VoiceClearApp: App {
                 .environment(\.locale, languageSettings.currentLocale)
         }
         #if os(macOS)
-        .defaultSize(width: 800, height: 600)
+        .defaultSize(width: 1024, height: 768)
         .windowResizability(.automatic)
         #endif
     }

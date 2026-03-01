@@ -67,13 +67,19 @@ enum AudioFileService {
     // MARK: - 媒体信息读取
 
     /// 读取媒体文件时长（支持音频和视频）
-    static func getMediaDuration(url: URL) throws -> TimeInterval {
+    static func getMediaDuration(url: URL) async throws -> TimeInterval {
         let ext = url.pathExtension.lowercased()
 
         if kVideoExtensions.contains(ext) {
             // 视频文件使用 AVURLAsset 获取时长
             let asset = AVURLAsset(url: url)
-            let duration = try AVAssetAsyncLoader.durationSeconds(of: asset)
+            let rawDuration: CMTime
+            if #available(iOS 16.0, macOS 13.0, *) {
+                rawDuration = try await asset.load(.duration)
+            } else {
+                rawDuration = asset.duration
+            }
+            let duration = CMTimeGetSeconds(rawDuration)
             guard duration.isFinite && duration > 0 else {
                 throw AudioFileServiceError.invalidDuration
             }
@@ -191,6 +197,9 @@ enum AudioFileService {
         do {
             audioTrack = try AVAssetAsyncLoader.firstTrack(of: asset, mediaType: .audio)
         } catch {
+            #if DEBUG
+            print("[AudioFileService] failed to load audio track from video: \(videoURL.lastPathComponent), error=\(error.localizedDescription)")
+            #endif
             throw AudioFileServiceError.audioExtractionFailed(error.localizedDescription)
         }
 

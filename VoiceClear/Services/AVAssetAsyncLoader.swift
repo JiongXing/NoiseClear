@@ -26,7 +26,24 @@ enum AVAssetAsyncLoaderError: LocalizedError {
 }
 
 enum AVAssetAsyncLoader {
-    private static let timeout: TimeInterval = 10
+    private static let timeout: TimeInterval = 30
+
+    private final class ResultHolder<T>: @unchecked Sendable {
+        private let lock = NSLock()
+        nonisolated(unsafe) private var value: Result<T, Error>?
+
+        nonisolated func set(_ result: Result<T, Error>) {
+            lock.lock()
+            value = result
+            lock.unlock()
+        }
+
+        nonisolated func get() -> Result<T, Error>? {
+            lock.lock()
+            defer { lock.unlock() }
+            return value
+        }
+    }
 
     static func firstTrack(of asset: AVAsset, mediaType: AVMediaType) throws -> AVAssetTrack {
         let tracks = try blockingLoad("tracks(\(mediaType.rawValue))") {
@@ -54,24 +71,30 @@ enum AVAssetAsyncLoader {
 
     private static func blockingLoad<T>(
         _ target: String,
-        operation: @escaping () async throws -> T
+        operation: @escaping @Sendable () async throws -> T
     ) throws -> T {
         let semaphore = DispatchSemaphore(value: 0)
-        var output: Result<T, Error>?
-        Task {
+        let holder = ResultHolder<T>()
+
+        Task.detached(priority: .userInitiated) {
             do {
                 let value = try await operation()
-                output = .success(value)
+                holder.set(.success(value))
             } catch {
-                output = .failure(error)
+                holder.set(.failure(error))
             }
             semaphore.signal()
         }
+
         let waitResult = semaphore.wait(timeout: .now() + timeout)
         guard waitResult == .success else {
+            #if DEBUG
+            print("[AVAssetAsyncLoader] timeout while loading \(target), timeout=\(timeout)s")
+            #endif
             throw AVAssetAsyncLoaderError.timeout(target)
         }
-        switch output {
+
+        switch holder.get() {
         case .success(let value):
             return value
         case .failure(let error):

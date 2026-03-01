@@ -115,7 +115,7 @@ final class AudioViewModel {
             defer { if securityScoped { url.stopAccessingSecurityScopedResource() } }
 
             do {
-                let duration = try AudioFileService.getMediaDuration(url: url)
+                let duration = try await AudioFileService.getMediaDuration(url: url)
 
                 // 预加载波形数据
                 let audioData = try AudioFileService.loadAndResample(url: url)
