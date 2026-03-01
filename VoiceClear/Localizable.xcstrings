@@ -37,7 +37,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld 个文件"
+            "value" : "%lld 個檔案"
           }
         }
       }
@@ -169,7 +169,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "AI 音频降噪工具"
+            "value" : "AI 音訊降噪工具"
           }
         }
       }
@@ -191,7 +191,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "无法读取音频数据"
+            "value" : "無法讀取音訊數據"
           }
         }
       }
@@ -213,7 +213,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "无法读取文件 %@: %@"
+            "value" : "無法讀取檔案 %@: %@"
           }
         }
       }
@@ -235,7 +235,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "无法读取文件: %@"
+            "value" : "無法讀取檔案: %@"
           }
         }
       }
@@ -257,7 +257,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "无法读取所选视频"
+            "value" : "無法讀取所選影片"
           }
         }
       }
@@ -279,7 +279,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "下载失败: %@"
+            "value" : "下載失敗: %@"
           }
         }
       }
@@ -317,7 +317,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "导出降噪后的文件"
+            "value" : "匯出降噪後的檔案"
           }
         }
       }
@@ -339,7 +339,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "导出失败: %@"
+            "value" : "匯出失敗: %@"
           }
         }
       }
@@ -361,7 +361,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "从相册导入失败: %@"
+            "value" : "從相簿匯入失敗: %@"
           }
         }
       }
@@ -383,7 +383,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在线流媒体"
+            "value" : "線上串流媒體"
           }
         }
       }
@@ -405,29 +405,29 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "播放失败: %@"
+            "value" : "播放失敗: %@"
           }
         }
       }
     },
-    "Please enter a valid HTTP/HTTPS URL" : {
+    "Please enter a valid HTTP\/HTTPS URL" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Please enter a valid HTTP/HTTPS URL"
+            "value" : "Please enter a valid HTTP\/HTTPS URL"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "请输入有效的 HTTP/HTTPS 地址"
+            "value" : "请输入有效的 HTTP\/HTTPS 地址"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "请输入有效的 HTTP/HTTPS 地址"
+            "value" : "請輸入有效的 HTTP\/HTTPS 地址"
           }
         }
       }
@@ -449,7 +449,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "请输入有效的 URL"
+            "value" : "請輸入有效的 URL"
           }
         }
       }
@@ -471,7 +471,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "处理 %@ 失败: %@"
+            "value" : "處理 %@ 失敗: %@"
           }
         }
       }
@@ -509,7 +509,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "远程播放器不可用"
+            "value" : "遠程播放器不可用"
           }
         }
       }
@@ -531,29 +531,29 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "选择音频或视频文件"
+            "value" : "選擇音訊或影片檔案"
           }
         }
       }
     },
-    "Select one or more audio/video files for denoising" : {
+    "Select one or more audio\/video files for denoising" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Select one or more audio/video files for denoising"
+            "value" : "Select one or more audio\/video files for denoising"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "选择一个或多个音频/视频文件进行降噪"
+            "value" : "选择一个或多个音频\/视频文件进行降噪"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "选择一个或多个音频/视频文件进行降噪"
+            "value" : "選擇一個或多個音訊\/影片檔案進行降噪"
           }
         }
       }
@@ -575,7 +575,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "服务器返回错误 (%d)"
+            "value" : "服務器返回錯誤 (%d)"
           }
         }
       }
@@ -597,7 +597,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "不支持的文件格式: .%@"
+            "value" : "不支持的檔案格式: .%@"
           }
         }
       }
@@ -641,7 +641,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "下载中..."
+            "value" : "下載中..."
           }
         }
       }
@@ -663,7 +663,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "从文件选取"
+            "value" : "從檔案選擇"
           }
         }
       }
@@ -685,7 +685,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "从相册选取视频"
+            "value" : "從相簿選擇影片"
           }
         }
       }
@@ -707,7 +707,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "全部导出"
+            "value" : "全部匯出"
           }
         }
       }
@@ -729,7 +729,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "准备就绪"
+            "value" : "準備就緒"
           }
         }
       }
@@ -751,7 +751,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "剩余 %@"
+            "value" : "剩餘 %@"
           }
         }
       }
@@ -773,7 +773,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "加载在线文件"
+            "value" : "加載在線檔案"
           }
         }
       }
@@ -795,7 +795,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "加载完成后将显示播放与降噪控制面板"
+            "value" : "加載完成後將顯示播放與降噪控制面板"
           }
         }
       }
@@ -839,7 +839,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "原始音频"
+            "value" : "原始音訊"
           }
         }
       }
@@ -883,7 +883,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "启用降噪"
+            "value" : "啓用降噪"
           }
         }
       }
@@ -905,7 +905,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "回退：下载后播放"
+            "value" : "回退：下載後播放"
           }
         }
       }
@@ -949,7 +949,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在线真流式（原声）"
+            "value" : "在線真流式（原聲）"
           }
         }
       }
@@ -971,7 +971,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在线真流式（降噪）"
+            "value" : "在線真流式（降噪）"
           }
         }
       }
@@ -993,7 +993,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在线资源不存在或已过期，请更换可访问的音频地址"
+            "value" : "在線資源不存在或已過期，請更換可訪問的音訊地址"
           }
         }
       }
@@ -1015,7 +1015,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在线资源加载中..."
+            "value" : "在線資源加載中..."
           }
         }
       }
@@ -1037,7 +1037,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "处理中 %lld%%"
+            "value" : "處理中 %lld%%"
           }
         }
       }
@@ -1059,7 +1059,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "大文件可能需要较长时间"
+            "value" : "大檔案可能需要較長時間"
           }
         }
       }
@@ -1081,7 +1081,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "失败: %@"
+            "value" : "失敗: %@"
           }
         }
       }
@@ -1103,7 +1103,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "实时降噪 · 边播边听"
+            "value" : "實時降噪 · 邊播邊聽"
           }
         }
       }
@@ -1125,7 +1125,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "导出文件"
+            "value" : "匯出檔案"
           }
         }
       }
@@ -1147,7 +1147,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "已关闭"
+            "value" : "已關閉"
           }
         }
       }
@@ -1169,7 +1169,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "已启用"
+            "value" : "已啓用"
           }
         }
       }
@@ -1235,7 +1235,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "开始降噪"
+            "value" : "開始降噪"
           }
         }
       }
@@ -1257,7 +1257,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "强力"
+            "value" : "強力"
           }
         }
       }
@@ -1301,7 +1301,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "或点击选择文件"
+            "value" : "或點擊選擇檔案"
           }
         }
       }
@@ -1323,29 +1323,29 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "批量降噪 · 导出文件"
+            "value" : "批量降噪 · 匯出檔案"
           }
         }
       }
     },
-    "拖拽音频/视频文件到此处" : {
+    "拖拽音频\/视频文件到此处" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Drag audio/video files here"
+            "value" : "Drag audio\/video files here"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "拖拽音频/视频文件到此处"
+            "value" : "拖拽音频\/视频文件到此处"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "拖拽音频/视频文件到此处"
+            "value" : "拖拽音訊\/影片檔案到此處"
           }
         }
       }
@@ -1411,7 +1411,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "播放链路"
+            "value" : "播放鏈路"
           }
         }
       }
@@ -1455,7 +1455,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "支持从文件或相册导入"
+            "value" : "支持從檔案或相簿匯入"
           }
         }
       }
@@ -1477,7 +1477,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "文件列表"
+            "value" : "檔案列表"
           }
         }
       }
@@ -1499,7 +1499,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "文件转换"
+            "value" : "檔案轉換"
           }
         }
       }
@@ -1521,7 +1521,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "暂无媒体文件"
+            "value" : "暫無媒體檔案"
           }
         }
       }
@@ -1543,7 +1543,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "更换文件"
+            "value" : "更換檔案"
           }
         }
       }
@@ -1587,7 +1587,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "本地文件模式"
+            "value" : "本地檔案模式"
           }
         }
       }
@@ -1609,7 +1609,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在从相册导入..."
+            "value" : "正在從相簿匯入..."
           }
         }
       }
@@ -1631,7 +1631,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在加载在线资源..."
+            "value" : "正在加載在線資源..."
           }
         }
       }
@@ -1653,7 +1653,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "波形预览 — %@"
+            "value" : "波形預覽 — %@"
           }
         }
       }
@@ -1702,24 +1702,24 @@
         }
       }
     },
-    "点击选择音频/视频文件" : {
+    "点击选择音频\/视频文件" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tap to select audio/video"
+            "value" : "Tap to select audio\/video"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "点击选择音频/视频文件"
+            "value" : "点击选择音频\/视频文件"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "点击选择音频/视频文件"
+            "value" : "點擊選擇音訊\/影片檔案"
           }
         }
       }
@@ -1741,7 +1741,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "版本 1.0 · 基于 RNNoise 引擎"
+            "value" : "版本 1.0 · 基於 RNNoise 引擎"
           }
         }
       }
@@ -1763,7 +1763,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "确定"
+            "value" : "確定"
           }
         }
       }
@@ -1785,7 +1785,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "确定要移除「%@」吗？"
+            "value" : "確定要移除「%@」嗎？"
           }
         }
       }
@@ -1807,7 +1807,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "确认移除"
+            "value" : "確認移除"
           }
         }
       }
@@ -1851,7 +1851,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "移除文件"
+            "value" : "移除檔案"
           }
         }
       }
@@ -1873,7 +1873,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "等待处理"
+            "value" : "等待處理"
           }
         }
       }
@@ -1917,7 +1917,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "粘贴"
+            "value" : "粘貼"
           }
         }
       }
@@ -1961,7 +1961,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "設定"
+            "value" : "設置"
           }
         }
       }
@@ -2027,29 +2027,29 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "轻度"
+            "value" : "輕度"
           }
         }
       }
     },
-    "输入在线音频/视频 URL" : {
+    "输入在线音频\/视频 URL" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enter audio/video URL"
+            "value" : "Enter audio\/video URL"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "输入在线音频/视频 URL"
+            "value" : "输入在线音频\/视频 URL"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "输入在线音频/视频 URL"
+            "value" : "輸入在線音訊\/影片 URL"
           }
         }
       }
@@ -2071,7 +2071,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "选择文件来源"
+            "value" : "選擇檔案來源"
           }
         }
       }
@@ -2093,7 +2093,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "错误"
+            "value" : "錯誤"
           }
         }
       }
@@ -2115,7 +2115,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "降噪后"
+            "value" : "降噪後"
           }
         }
       }
@@ -2137,7 +2137,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "降噪后（待处理）"
+            "value" : "降噪後（待處理）"
           }
         }
       }
@@ -2159,7 +2159,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "降噪强度"
+            "value" : "降噪強度"
           }
         }
       }
@@ -2225,7 +2225,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "降噪设置"
+            "value" : "降噪設置"
           }
         }
       }
@@ -2269,7 +2269,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "首帧偏慢，建议回退策略"
+            "value" : "首幀偏慢，建議回退策略"
           }
         }
       }

@@ -16,6 +16,12 @@
             "state" : "new",
             "value" : "Voice Clear"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voice Clear"
+          }
         }
       }
     },
@@ -32,6 +38,12 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "new",
+            "value" : "VoiceClear"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
             "value" : "VoiceClear"
           }
         }
@@ -52,6 +64,12 @@
             "state" : "new",
             "value" : ""
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ""
+          }
         }
       }
     },
@@ -68,6 +86,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "需要访问相册以保存降噪后的视频"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需要訪問相簿以保存降噪後的影片"
           }
         }
       }

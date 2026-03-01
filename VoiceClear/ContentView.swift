@@ -70,15 +70,15 @@ struct ContentView: View {
                         switch item {
                         case .denoisePlayer:
                             DenoisePlayerView()
-                                .navigationTitle(LocalizedStringKey(item.rawValue))
+                                .navigationTitle(LocaleLocalizer.string(for: item.rawValue, locale: languageSettings.selectedLanguage.locale))
                                 #if os(macOS)
-                                .navigationSubtitle(LocalizedStringKey(item.subtitleKey))
+                                .navigationSubtitle(LocaleLocalizer.string(for: item.subtitleKey, locale: languageSettings.selectedLanguage.locale))
                                 #endif
                         case .fileConversion:
                             FileConversionView()
-                                .navigationTitle(LocalizedStringKey(item.rawValue))
+                                .navigationTitle(LocaleLocalizer.string(for: item.rawValue, locale: languageSettings.selectedLanguage.locale))
                                 #if os(macOS)
-                                .navigationSubtitle(LocalizedStringKey(item.subtitleKey))
+                                .navigationSubtitle(LocaleLocalizer.string(for: item.subtitleKey, locale: languageSettings.selectedLanguage.locale))
                                 #endif
                         }
                     }
