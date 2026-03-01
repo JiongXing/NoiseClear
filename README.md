@@ -1,83 +1,80 @@
 # VoiceClear
 
-> 基于 RNNoise 神经网络的音视频人声降噪工具，支持 macOS 和 iOS 双平台。
+> 基于 RNNoise 的 Apple 平台音视频人声降噪工具，支持本地与在线流式播放降噪。
 
-VoiceClear 是一款原生 Apple 平台应用，使用 **RNNoise**（Recurrent Neural Network Noise Suppression）进行语音降噪。项目目前采用 **AVFoundation 真流式 + 多级回退** 技术方案，在低延迟播放、在线可用性与兼容性之间做平衡。当前版本已完成本轮音频连续性修复：在线流式重音/拖音明显下降，本地流式爆破音得到抑制。
+VoiceClear 是一款使用 SwiftUI + AVFoundation 构建的原生应用。项目核心是 RNNoise 实时降噪，围绕低延迟播放、在线可用性与稳定回退进行了工程化封装。
 
-详细技术文档见：`docs/TECHNICAL_SOLUTION.md`
+详细技术文档见：[docs/TECHNICAL_SOLUTION.md](docs/TECHNICAL_SOLUTION.md)
 
-## 功能特性
+## 主要能力
 
-- **音频降噪**：支持 MP3、M4A、WAV、AAC、AIFF、FLAC
-- **视频降噪**：支持 MP4、MOV（视频轨直通，处理音轨）
-- **真流式播放降噪**：增量解码 + RNNoise 小帧处理（已做连续性优化）
-- **在线 URL 播放**：HTTP/HTTPS MP3/MP4，优先实时降噪
-- **多级回退**：Tap 失败 -> 在线原声 -> 下载后本地播放
-- **强度可调**：10% ~ 100%
+- 音频降噪：支持 `mp3`、`m4a`、`wav`、`aac`、`aiff`、`flac`
+- 视频降噪：支持 `mp4`、`mov`（视频轨直通，仅处理音轨）
+- 本地真流式播放：增量解码 + 小帧 RNNoise 处理
+- 在线 URL 播放：`http/https` 资源优先走实时降噪
+- 多级回退：Tap 失败回退在线原声，远端初始化失败回退下载本地播放
+- 降噪强度可调：`10% ~ 100%`
+- 多语言 UI：简体中文、繁體中文、English（可在设置中切换）
 
-## 技术方案总览
+## 技术方案概览
 
-### 1) 本地播放主路径（默认）
+### 1) 本地播放主路径
 
-`IncrementalStreamingDenoiser`
+`IncrementalStreamingDenoiser` + `AudioEnginePlayer`
 
-- 增量读取/解码音频小块 PCM
-- 按 RNNoise 帧（480 samples）持续降噪
-- 输出到 `AudioEnginePlayer` 调度播放
-- 目标：降低首帧等待、降低内存峰值
+- 增量读取媒体，持续产出 PCM 小块
+- 以 RNNoise 帧长（480 samples）逐帧处理
+- 管线内部控制缓冲水位（约 2 秒队列上限）
+- 在块边界做平滑，减少爆破音和边界突变
 
-### 2) 在线播放主路径（当前可用）
+### 2) 在线播放主路径
 
-`AVPlayerItem + MTAudioProcessingTap`
+`AVPlayerItem + MTAudioProcessingTap + AVPlayerDenoiseTapProcessor`
 
-- 在线媒体直接播放
-- 在音轨处理回调中执行 RNNoise
-- 采用“跨回调样本连续拼接”（`sourcePendingSamples`）替代逐包固定长度重映射，避免拖音/重音
-- 对回调包边界做平滑过渡，降低不连续导致的突变噪声
-- 目标：实现在线“边播边降噪”
+- 直接播放远端媒体
+- 在 Audio Tap 回调中执行 RNNoise
+- 使用 `rnPendingSamples/sourcePendingSamples` 维持跨回调连续样本消费，避免逐包重映射导致的拖音/重音
+- 对边界做平滑过渡，提升长时听感稳定性
 
-### 2.2) 本轮音频连续性修复（2026-02）
+### 3) 回退策略
 
-- **在线流式链路**：修复重采样后逐包重映射导致的时间轴拉伸，改为连续样本消费模型
-- **本地流式链路**：在 `IncrementalStreamingDenoiser` 增加降噪块边界平滑，抑制人声段爆破音
-- **结果**：同源音频下，在线重音显著降低；本地轻微重音与爆破音明显改善
+- Audio Tap 挂载失败 -> 在线原声播放
+- 远端初始化失败 -> 下载后走本地链路播放
+- 所有回退原因记录到 `playbackMetrics.fallbackReason`
 
-### 2.1) 在线流式音质说明（重要）
+## 架构与封装
 
-- 在线流式与离线整文件降噪在理论上不完全等价：
-  - 流式路径受实时性约束，无法像离线处理一样使用完整全局上下文
-  - 在线路径还需处理回调块边界、缓冲和时序抖动
-- 因此实际效果通常为：**流式可接近离线，但离线仍是音质上限**
-- 产品策略建议：
-  - 低延迟优先：使用在线流式降噪
-  - 最高音质优先：使用下载后本地（离线）降噪/播放
+### MVVM 分层
 
-### 3) 可用性回退路径
+- `AudioViewModel`：批量降噪、进度、导出
+- `PlayerViewModel`：播放状态机、链路选择、回退策略、启动时延指标
+- `Services`：解码/重采样/降噪/调度/媒体 I/O
 
-- AudioTap 不可用 -> 在线原声播放
-- 在线初始化失败 -> 下载到本地后播放
-- 目标：优先保证用户“能播、不断播”
+### 关键模块职责
 
-### 4) 关键观测指标
+- `StreamingAudioPipeline`：统一本地流式读取接口
+- `IncrementalStreamingDenoiser`：当前本地流式主实现
+- `StreamingDenoiser`：legacy 兼容实现（可切换）
+- `AVPlayerDenoiseTapProcessor`：在线音轨实时降噪核心
+- `AudioEnginePlayer`：AVAudioEngine 播放与缓冲池优化
+- `FFmpegDenoiser`：离线降噪处理入口（音频输出 WAV，视频重封装）
+- `LanguageSettings`：运行时语言与 locale 注入
 
-- 首帧时间（Startup Latency）
-- 缓冲时长与卡顿次数（Buffer/Stall）
-- 回退原因（Tap 挂载失败、远端初始化失败等）
-- 长时播放稳定性（连续播放成功率）
+## 多语言实现
 
-## 播放数据流
+- 文案资源：`Localizable.xcstrings`
+- 语言模型：`AppLanguage`（`zh-Hans` / `zh-Hant` / `en`）
+- App 启动时通过 `.environment(\.locale, languageSettings.locale)` 注入当前语言
+- `Text(LocalizedStringKey)` 与 `LocaleLocalizer` 并行支持，覆盖普通 UI 与运行时提示（如错误、Toast）
 
-```mermaid
-flowchart LR
-input[LocalOrRemoteInput] --> decode[AVFoundationDecodeOrPlayerTap]
-decode --> rnnoise[RNNoiseFrameProcess]
-rnnoise --> schedule[AudioEngineOrAVPlayerOutput]
-schedule --> speaker[Speaker]
+## 支持格式与输出规则
 
-decode --> fallback[FallbackController]
-fallback --> passthrough[RemotePassthrough]
-fallback --> localFile[DownloadThenLocalPlay]
-```
+- 输入音频：`mp3`, `m4a`, `wav`, `aac`, `aiff`, `flac`
+- 输入视频：`mp4`, `mov`
+- 离线导出：
+  - 音频 -> `WAV`（`16kHz`, mono, Float32）
+  - 视频 -> 保持原容器（`mp4/mov`），视频轨直通，音轨降噪后编码
+- 在线 URL：校验 `http/https`，并结合扩展名与 MIME 推断媒体类型
 
 ## 项目结构（核心）
 
@@ -85,8 +82,10 @@ fallback --> localFile[DownloadThenLocalPlay]
 VoiceClear/
 ├── VoiceClearApp.swift
 ├── ContentView.swift
+├── Localizable.xcstrings
 ├── Models/
-│   └── AudioFileItem.swift
+│   ├── AudioFileItem.swift
+│   └── LanguageSettings.swift
 ├── ViewModels/
 │   ├── AudioViewModel.swift
 │   └── PlayerViewModel.swift
@@ -103,57 +102,30 @@ VoiceClear/
 └── Views/
     ├── DenoisePlayerView.swift
     ├── VideoPlayerView.swift
-    └── FileConversionView.swift
+    ├── FileConversionView.swift
+    └── SettingsDrawerView.swift
 ```
-
-## 架构说明
-
-### MVVM 分层
-
-- `AudioViewModel`：批处理降噪与导出流程
-- `PlayerViewModel`：实时播放、seek、回退策略、运行指标
-- `Services`：解码/重采样/降噪/播放调度/在线处理
-
-### 核心模块职责
-
-- `StreamingAudioPipeline`：统一流式 PCM 读取协议
-- `IncrementalStreamingDenoiser`：本地流式主实现
-- `StreamingDenoiser`：legacy 兼容实现（回退）
-- `AVPlayerDenoiseTapProcessor`：在线音轨实时降噪
-- `AudioEnginePlayer`：AVAudioEngine 播放与缓冲池优化
-- `AVAssetAsyncLoader`：iOS 16+ 异步 `loadTracks/load(.duration)` 封装
 
 ## 技术栈
 
-- 平台：macOS / iOS (SwiftUI)
-- 语言：Swift 5（兼容 Swift 6 并发检查）
-- 架构：MVVM
-- 降噪引擎：RNNoise C 库（编译进二进制）
-- 音视频处理：AVFoundation + AVPlayerItem AudioTap
-- 并发模型：Swift Concurrency + GCD
-- 状态管理：Observation (`@Observable`)
+- 平台：macOS / iOS（SwiftUI）
+- 架构：MVVM + Observation（`@Observable`）
+- 降噪：RNNoise C 库（内置编译）
+- 媒体：AVFoundation + AVPlayer Audio Tap
+- 并发：Swift Concurrency + GCD
 
-## 运行环境
+## 开发环境
 
-- macOS 15.0+ / iOS 18.0+
-- Xcode 16.0+
+- Xcode 16+
+- 部署目标（Target）：
+  - iOS 17+
+  - macOS 14+
 
-## 设计亮点
+## 运行与调试
 
-| 决策         | 说明                                         |
-| ------------ | -------------------------------------------- |
-| 真流式优先   | 本地增量流式 + 在线实时处理                  |
-| 多级回退     | 优先可用性，失败自动降级                     |
-| 音质分层     | 实时流式满足低延迟，离线处理作为最高音质上限 |
-| Swift 6 兼容 | 处理 Sendable、主线程隔离、异步等待告警      |
-| 视频轨直通   | 保持画质并减少重编码开销                     |
-
-## 支持格式
-
-- 音频：MP3, M4A, WAV, AAC, AIFF, FLAC  
-  输出：WAV (16kHz Mono Float32)
-- 视频：MP4, MOV  
-  输出：原格式（视频无损 + 处理后音轨）
+1. 打开 `VoiceClear.xcodeproj`
+2. 选择目标平台（iOS 或 macOS）
+3. 直接运行 `VoiceClear` target
 
 ## 许可证
 
