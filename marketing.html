@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="VoiceClear（清音）：一键提升语音清晰度的音频与视频人声降噪工具，支持本地文件与在线 URL。">
+    <title>VoiceClear（清音）- 人声降噪</title>
+    <style>
+        :root {
+            --bg: #f5f4ef;
+            --paper: #fffdf8;
+            --ink: #1f2721;
+            --muted: #4b5a51;
+            --line: #d6d3c7;
+            --primary: #14532d;
+            --primary-soft: #d8f0df;
+            --accent: #b45309;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Avenir Next", "PingFang SC", "Noto Sans SC", "Source Han Sans SC", sans-serif;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at 85% 15%, #fce7d0 0, transparent 45%),
+                radial-gradient(circle at 10% 100%, #dbeed6 0, transparent 48%),
+                var(--bg);
+            line-height: 1.65;
+        }
+
+        .container {
+            width: min(1100px, 92%);
+            margin: 0 auto;
+            padding: 32px 0 60px;
+        }
+
+        .hero {
+            background: linear-gradient(160deg, #ffffff 0%, #f6faf7 55%, #eef6ff 100%);
+            border: 1px solid var(--line);
+            border-radius: 22px;
+            padding: 34px 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            animation: fadeUp .6s ease-out;
+        }
+
+        .brand {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 999px;
+            background: var(--primary-soft);
+            color: var(--primary);
+            font-weight: 700;
+            letter-spacing: .2px;
+        }
+
+        h1 {
+            margin: 16px 0 12px;
+            font-size: clamp(30px, 5vw, 48px);
+            line-height: 1.15;
+            letter-spacing: .2px;
+        }
+
+        .lead {
+            margin: 0;
+            font-size: clamp(17px, 2.8vw, 22px);
+            color: var(--muted);
+            max-width: 900px;
+        }
+
+        .quick {
+            margin-top: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .quick span {
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: 7px 12px;
+            background: #fff;
+            font-size: 14px;
+        }
+
+        .section {
+            margin-top: 26px;
+            background: var(--paper);
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            padding: 24px;
+            animation: fadeUp .9s ease-out;
+        }
+
+        h2 {
+            margin: 0 0 14px;
+            font-size: clamp(22px, 3vw, 30px);
+            line-height: 1.2;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .card {
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            background: #fff;
+            padding: 14px;
+        }
+
+        .card h3 {
+            margin: 0 0 8px;
+            font-size: 18px;
+        }
+
+        .card p {
+            margin: 0;
+            color: var(--muted);
+        }
+
+        .list {
+            margin: 0;
+            padding-left: 22px;
+        }
+
+        .list li {
+            margin-bottom: 7px;
+        }
+
+        .shots {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        figure {
+            margin: 0;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            overflow: hidden;
+            background: #fff;
+        }
+
+        figure img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        figcaption {
+            padding: 8px 10px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .langs {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .lang {
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 14px;
+            background: #fff;
+        }
+
+        .lang strong {
+            display: block;
+            margin-bottom: 6px;
+            color: var(--primary);
+        }
+
+        .faq dt {
+            font-weight: 700;
+            margin-top: 12px;
+        }
+
+        .faq dd {
+            margin: 5px 0 0;
+            color: var(--muted);
+        }
+
+        .footer {
+            margin-top: 26px;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 18px;
+            background: #fff;
+            color: var(--muted);
+        }
+
+        a {
+            color: var(--primary);
+        }
+
+        .strong {
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 900px) {
+            .grid,
+            .shots,
+            .langs {
+                grid-template-columns: 1fr;
+            }
+            .container {
+                padding: 18px 0 40px;
+            }
+            .hero,
+            .section {
+                padding: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <section class="hero">
+            <span class="brand">VoiceClear（清音）</span>
+            <h1>一键降低背景噪声，让每句话更清楚</h1>
+            <p class="lead">支持音频与视频人声降噪，既可处理本地文件，也可粘贴在线 URL 实时播放对比。你可以先听原声，再听降噪效果，确认后再导出。</p>
+            <div class="quick">
+                <span>音频 + 视频降噪</span>
+                <span>本地文件 + 在线 URL</span>
+                <span>边播放边降噪</span>
+                <span>降噪强度 10% - 100%</span>
+                <span>本地处理为主</span>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>你可以用 VoiceClear 做什么</h2>
+            <ul class="list">
+                <li>听清嘈杂环境下的讲话内容</li>
+                <li>优化网课、播客、会议录音的可懂度</li>
+                <li>提升 Vlog、访谈、记录视频的人声表现</li>
+                <li>快速处理常见音视频格式，减少后期时间</li>
+            </ul>
+        </section>
+
+        <section class="section">
+            <h2>核心特性</h2>
+            <div class="grid">
+                <article class="card">
+                    <h3>音频与视频双支持</h3>
+                    <p>不只音频，视频中的人声也可降噪处理，输出更清晰的听感。</p>
+                </article>
+                <article class="card">
+                    <h3>本地文件与在线链接</h3>
+                    <p>导入本机文件或粘贴 http/https 媒体链接，按场景灵活使用。</p>
+                </article>
+                <article class="card">
+                    <h3>实时试听对比</h3>
+                    <p>支持原声与降噪效果切换，确认提升后再导出，避免盲目处理。</p>
+                </article>
+                <article class="card">
+                    <h3>强度可调</h3>
+                    <p>从轻度优化到强力降噪，按不同录音环境调整到合适平衡点。</p>
+                </article>
+                <article class="card">
+                    <h3>本地优先处理</h3>
+                    <p><span class="strong">不上传文件到服务器</span>，以设备本地处理为主，更适合注重隐私的内容。</p>
+                </article>
+                <article class="card">
+                    <h3>多语言界面</h3>
+                    <p>支持简体中文、繁體中文、English、日本語，跨地区使用更自然。</p>
+                </article>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>支持格式</h2>
+            <div class="grid">
+                <article class="card">
+                    <h3>输入音频</h3>
+                    <p>mp3、m4a、wav、aac、aiff、flac</p>
+                </article>
+                <article class="card">
+                    <h3>输入视频</h3>
+                    <p>mp4、mov（保留视频轨，仅处理音轨）</p>
+                </article>
+                <article class="card">
+                    <h3>导出规则</h3>
+                    <p>音频导出 WAV；视频保持原容器，完成音轨降噪后封装输出。</p>
+                </article>
+                <article class="card">
+                    <h3>在线播放</h3>
+                    <p>支持 http/https 在线 URL，适合先试听再决定是否下载处理。</p>
+                </article>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>界面预览</h2>
+            <div class="shots">
+                <figure>
+                    <img src="docs/appstore_assets/mac/zh-Hans/mac_appstore_01_home_zh-Hans_1280x800.png" alt="VoiceClear 首页">
+                    <figcaption>首页：导入文件或粘贴链接开始处理</figcaption>
+                </figure>
+                <figure>
+                    <img src="docs/appstore_assets/mac/zh-Hans/mac_appstore_02_play_zh-Hans_1280x800.png" alt="VoiceClear 播放对比">
+                    <figcaption>播放：实时切换原声与降噪效果</figcaption>
+                </figure>
+                <figure>
+                    <img src="docs/appstore_assets/mac/zh-Hans/mac_appstore_03_convert_zh-Hans_1280x800.png" alt="VoiceClear 批量转换">
+                    <figcaption>转换：批量降噪并导出结果文件</figcaption>
+                </figure>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>多语言文案（App Store）</h2>
+            <div class="langs">
+                <article class="lang">
+                    <strong>简体中文</strong>
+                    <p>一键为音频和视频人声降噪，支持在线链接实时播放与本地文件处理，让对话更清晰、听感更舒适。</p>
+                </article>
+                <article class="lang">
+                    <strong>繁體中文</strong>
+                    <p>一鍵為音訊與影片人聲降噪，支援線上連結即時播放與本機檔案處理，讓對話更清楚、聽感更舒適。</p>
+                </article>
+                <article class="lang">
+                    <strong>English</strong>
+                    <p>Clean up voices in audio and video with one tap. Process local files or stream from URLs with adjustable denoise strength for clearer speech.</p>
+                </article>
+                <article class="lang">
+                    <strong>日本語</strong>
+                    <p>音声・動画の話し声をワンタップでノイズ低減。ローカルファイルにもURL再生にも対応し、聞き取りやすい音声へ整えます。</p>
+                </article>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>常见问题</h2>
+            <dl class="faq">
+                <dt>会把我的音频或视频上传到云端吗？</dt>
+                <dd>不会。VoiceClear 采用本地优先处理，不收集、存储或传输你的媒体内容。</dd>
+
+                <dt>可以先试听效果再导出吗？</dt>
+                <dd>可以。支持原声与降噪效果对比试听，满意后再导出。</dd>
+
+                <dt>是否支持在线链接播放？</dt>
+                <dd>支持，可粘贴 http/https URL 进行在线播放与降噪试听。</dd>
+
+                <dt>适合哪些场景？</dt>
+                <dd>课程录音、会议音频、采访素材、Vlog 与手机视频都可以快速提升人声清晰度。</dd>
+            </dl>
+        </section>
+
+        <footer class="footer">
+            <p><strong>VoiceClear（清音）</strong></p>
+            <p>隐私政策：<a href="docs/privacy/index.html">privacy-policy.html</a></p>
+            <p>联系邮箱：<a href="mailto:liangjiongxing@gmail.com">liangjiongxing@gmail.com</a></p>
+        </footer>
+    </main>
+</body>
+</html>

@@ -580,7 +580,7 @@ struct DenoisePlayerView: View {
                         Text(L10n.text(.commonLight))
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                            .frame(width: 30)
+                            .frame(width: 42)
 
                         Slider(value: $viewModel.denoiseStrength, in: 0.1...1.0, step: 0.1)
                             .tint(.accentColor)
@@ -589,7 +589,8 @@ struct DenoisePlayerView: View {
                         Text(L10n.text(.commonStrong))
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                            .frame(width: 30)
+                            .lineLimit(1)
+                            .frame(width: 42)
 
                         Text("\(Int(viewModel.denoiseStrength * 100))%")
                             .font(.caption.monospacedDigit())

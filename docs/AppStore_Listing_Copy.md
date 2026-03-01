@@ -2,6 +2,13 @@
 
 > 适用于 App Store Connect：推广文本（Promotional Text）、描述（Description）、关键词（Keywords）。
 
+技术支持
+https://github.com/JiongXing/JiongXing.github.io/issues
+
+营销网址
+https://jiongxing.github.io/voiceclear
+
+
 ## 1) 简体中文（zh-Hans）
 
 ### 推广文本
@@ -28,7 +35,7 @@ VoiceClear 是一款面向日常用户的人声降噪工具。
 - 本地处理为主，更安心
 
 ### 关键词
-人声降噪,音频降噪,视频降噪,去噪,降噪工具,录音优化,会议录音,播客剪辑,网课录音,背景噪声,语音增强,清晰人声
+人声降噪,音频降噪,视频降噪,去噪,语音增强,背景噪声,会议录音,播客剪辑
 
 ---
 
@@ -58,7 +65,7 @@ VoiceClear 是一款為一般使用者設計的人聲降噪工具。
 - 以本機處理為主，使用更安心
 
 ### 關鍵字
-人聲降噪,音訊降噪,影片降噪,去噪,降噪工具,錄音優化,會議錄音,Podcast剪輯,網課錄音,背景噪音,語音增強,清晰人聲
+人聲降噪,音訊降噪,影片降噪,去噪,語音增強,背景噪音,會議錄音,播客剪輯
 
 ---
 
@@ -88,7 +95,7 @@ Key features:
 - Privacy-friendly local-first processing
 
 ### Keywords
-voice denoise,audio denoise,video denoise,noise reduction,speech clarity,voice enhancer,meeting recording,podcast cleanup,background noise,interview audio,vlog audio,clear voice
+voice denoise,audio denoise,video denoise,noise reduction,speech clarity,background noise
 
 ---
 
@@ -118,4 +125,4 @@ VoiceClear でできること：
 - ローカル中心の処理で安心
 
 ### キーワード
-音声ノイズ除去,動画ノイズ除去,ノイズ低減,人声強調,音質改善,会議録音,ポッドキャスト編集,背景ノイズ,インタビュー音声,Vlog音声,クリア音声,音声補正
+音声ノイズ除去,動画ノイズ除去,ノイズ低減,音質改善,会議録音,背景ノイズ,クリア音声
