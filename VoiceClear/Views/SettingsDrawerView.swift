@@ -54,14 +54,9 @@ struct SettingsDrawerView: View {
             }
         }, label: {
             HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(LocalizedStringKey(language.nameKey))
-                        .font(.body.weight(.medium))
-                        .foregroundStyle(.primary)
-                    Text(LocalizedStringKey(language.subtitleKey))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                Text(verbatim: language.nameKey)
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(.primary)
 
                 Spacer()
 
@@ -81,7 +76,7 @@ struct SettingsDrawerView: View {
             )
         })
         .buttonStyle(.plain)
-        .accessibilityLabel(Text(LocalizedStringKey(language.nameKey)))
+        .accessibilityLabel(Text(verbatim: language.nameKey))
         .accessibilityValue(Text(LocalizedStringKey(isSelected ? "已选择" : "未选择")))
     }
 }
