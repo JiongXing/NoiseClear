@@ -47,7 +47,7 @@ struct FileListView: View {
             Image(systemName: "music.note.list")
                 .font(.title2)
                 .foregroundStyle(.tertiary)
-            Text(String(localized: "暂无媒体文件"))
+            Text("暂无媒体文件")
                 .font(.subheadline)
                 .foregroundStyle(.tertiary)
         }
@@ -59,6 +59,7 @@ struct FileListView: View {
 
 /// 文件列表中的单行，显示文件信息和状态
 struct AudioFileRow: View {
+    @EnvironmentObject private var languageSettings: LanguageSettings
 
     let file: AudioFileItem
     let isSelected: Bool
@@ -89,7 +90,7 @@ struct AudioFileRow: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
-                    Text(file.status.displayText)
+                    Text(file.status.displayText(locale: languageSettings.selectedLanguage.locale))
                         .font(.caption)
                         .foregroundStyle(statusColor)
                 }
@@ -117,7 +118,7 @@ struct AudioFileRow: View {
                     }
                     .buttonStyle(.borderless)
                     #if os(macOS)
-                    .help(String(localized: "导出文件"))
+                    .help("导出文件")
                     #endif
                 }
 
@@ -134,7 +135,7 @@ struct AudioFileRow: View {
                     .buttonStyle(.borderless)
                     #if os(macOS)
                     .opacity(isHovered ? 1 : 0)
-                    .help(String(localized: "移除文件"))
+                    .help("移除文件")
                     #endif
                 }
             }
@@ -161,7 +162,7 @@ struct AudioFileRow: View {
                 Button {
                     onExport()
                 } label: {
-                    Label(String(localized: "导出文件"), systemImage: "square.and.arrow.up")
+                    Label("导出文件", systemImage: "square.and.arrow.up")
                 }
             }
 
@@ -170,22 +171,22 @@ struct AudioFileRow: View {
                 Button(role: .destructive) {
                     onRemove()
                 } label: {
-                    Label(String(localized: "移除文件"), systemImage: "trash")
+                    Label("移除文件", systemImage: "trash")
                 }
             }
         }
         // 删除确认弹窗，防止误触
         .confirmationDialog(
-            String(localized: "确认移除"),
+            LocaleLocalizer.string(for: "确认移除", locale: languageSettings.selectedLanguage.locale),
             isPresented: $showRemoveConfirmation,
             titleVisibility: .visible
         ) {
-            Button(String(localized: "移除"), role: .destructive) {
+            Button(LocaleLocalizer.string(for: "移除", locale: languageSettings.selectedLanguage.locale), role: .destructive) {
                 onRemove()
             }
-            Button(String(localized: "取消"), role: .cancel) {}
+            Button(LocaleLocalizer.string(for: "取消", locale: languageSettings.selectedLanguage.locale), role: .cancel) {}
         } message: {
-            Text(String(format: String(localized: "确定要移除「%@」吗？"), file.fileName))
+            Text(String(format: LocaleLocalizer.string(for: "确定要移除「%@」吗？", locale: languageSettings.selectedLanguage.locale), file.fileName))
         }
         #if os(macOS)
         .onHover { hovering in
@@ -246,6 +247,7 @@ struct AudioFileRow: View {
         onRemove: { _ in },
         onExport: { _ in }
     )
+    .environmentObject(LanguageSettings())
     .frame(width: 500, height: 300)
     .padding()
 }

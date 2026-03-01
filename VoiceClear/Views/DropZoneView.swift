@@ -58,24 +58,24 @@ struct DropZoneView: View {
 
                 VStack(spacing: 4) {
                     #if os(macOS)
-                    Text(String(localized: "拖拽音频/视频文件到此处"))
+                    Text("拖拽音频/视频文件到此处")
                         .font(.headline)
                         .foregroundStyle(.primary)
 
-                    Text(String(localized: "或点击选择文件"))
+                    Text("或点击选择文件")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     #else
-                    Text(String(localized: "点击选择音频/视频文件"))
+                    Text("点击选择音频/视频文件")
                         .font(.headline)
                         .foregroundStyle(.primary)
 
-                    Text(String(localized: "支持从文件或相册导入"))
+                    Text("支持从文件或相册导入")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     #endif
 
-                    Text(String(localized: "支持 MP3、M4A、WAV、AAC、FLAC、MP4、MOV 格式"))
+                    Text("支持 MP3、M4A、WAV、AAC、FLAC、MP4、MOV 格式")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                         .padding(.top, 2)

@@ -15,6 +15,7 @@ import PhotosUI
 
 /// 批量文件降噪转换功能（从原 ContentView 迁移）
 struct FileConversionView: View {
+    @EnvironmentObject private var languageSettings: LanguageSettings
 
     @State private var viewModel = AudioViewModel()
 
@@ -80,7 +81,7 @@ struct FileConversionView: View {
                 ToolbarItem(placement: .automatic) {
                     HStack(spacing: 12) {
                         Label(
-                            String(format: String(localized: "%lld 个文件"), Int64(viewModel.audioFiles.count)),
+                            String(format: LocaleLocalizer.string(for: "%lld 个文件", locale: languageSettings.selectedLanguage.locale), Int64(viewModel.audioFiles.count)),
                             systemImage: "doc.on.doc"
                         )
                         .font(.caption)
@@ -89,7 +90,7 @@ struct FileConversionView: View {
                         let completed = viewModel.audioFiles.filter { $0.status.isCompleted }.count
                         if completed > 0 {
                             Label(
-                                String(format: String(localized: "%lld 已完成"), Int64(completed)),
+                                String(format: LocaleLocalizer.string(for: "%lld 已完成", locale: languageSettings.selectedLanguage.locale), Int64(completed)),
                                 systemImage: "checkmark.circle"
                             )
                             .font(.caption)
@@ -113,14 +114,14 @@ struct FileConversionView: View {
                 viewModel.showError = true
             }
         }
-        .confirmationDialog(String(localized: "选择文件来源"), isPresented: $showSourceDialog) {
-            Button(String(localized: "从文件选取")) {
+        .confirmationDialog(LocaleLocalizer.string(for: "选择文件来源", locale: languageSettings.selectedLanguage.locale), isPresented: $showSourceDialog) {
+            Button(LocaleLocalizer.string(for: "从文件选取", locale: languageSettings.selectedLanguage.locale)) {
                 viewModel.showFilePicker = true
             }
-            Button(String(localized: "从相册选取视频")) {
+            Button(LocaleLocalizer.string(for: "从相册选取视频", locale: languageSettings.selectedLanguage.locale)) {
                 viewModel.showPhotoPicker = true
             }
-            Button(String(localized: "取消"), role: .cancel) {}
+            Button(LocaleLocalizer.string(for: "取消", locale: languageSettings.selectedLanguage.locale), role: .cancel) {}
         }
         .photosPicker(
             isPresented: $viewModel.showPhotoPicker,
@@ -139,7 +140,7 @@ struct FileConversionView: View {
                             importedURLs.append(movie.url)
                         }
                     } catch {
-                        viewModel.errorMessage = String(format: String(localized: "Import from album failed: %@"), error.localizedDescription)
+                        viewModel.errorMessage = String(format: LocaleLocalizer.string(for: "Import from album failed: %@", locale: languageSettings.selectedLanguage.locale), error.localizedDescription)
                         viewModel.showError = true
                     }
                 }
@@ -163,8 +164,8 @@ struct FileConversionView: View {
             }
         }
         #endif
-        .alert(String(localized: "错误"), isPresented: $viewModel.showError) {
-            Button(String(localized: "确定"), role: .cancel) {}
+        .alert(LocaleLocalizer.string(for: "错误", locale: languageSettings.selectedLanguage.locale), isPresented: $viewModel.showError) {
+            Button(LocaleLocalizer.string(for: "确定", locale: languageSettings.selectedLanguage.locale), role: .cancel) {}
         } message: {
             if let msg = viewModel.errorMessage {
                 Text(msg)
@@ -186,7 +187,7 @@ struct FileConversionView: View {
     private var fileListSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Label(String(localized: "文件列表"), systemImage: "list.bullet")
+                Label("文件列表", systemImage: "list.bullet")
                     .font(.subheadline)
                     .fontWeight(.medium)
                     .foregroundStyle(.secondary)
@@ -194,7 +195,7 @@ struct FileConversionView: View {
                 Spacer()
 
                 if viewModel.audioFiles.count > 1 && !viewModel.isProcessing {
-                    Button(String(localized: "清空全部"), role: .destructive) {
+                    Button(LocaleLocalizer.string(for: "清空全部", locale: languageSettings.selectedLanguage.locale), role: .destructive) {
                         viewModel.removeAll()
                     }
                     .font(.caption)
@@ -228,7 +229,7 @@ struct FileConversionView: View {
 
     private func waveformSection(for file: AudioFileItem) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label(String(format: String(localized: "波形预览 — %@"), file.fileName), systemImage: "waveform")
+            Label(String(format: LocaleLocalizer.string(for: "波形预览 — %@", locale: languageSettings.selectedLanguage.locale), file.fileName), systemImage: "waveform")
                 .font(.subheadline)
                 .fontWeight(.medium)
                 .foregroundStyle(.secondary)
@@ -250,13 +251,13 @@ struct FileConversionView: View {
 
     private var controlsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label(String(localized: "降噪强度"), systemImage: "slider.horizontal.3")
+            Label("降噪强度", systemImage: "slider.horizontal.3")
                 .font(.subheadline)
                 .fontWeight(.medium)
                 .foregroundStyle(.secondary)
 
             HStack(spacing: 12) {
-                Text(String(localized: "轻度"))
+                Text("轻度")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -266,7 +267,7 @@ struct FileConversionView: View {
                     .tint(.accentColor)
                     .disabled(viewModel.isProcessing)
 
-                Text(String(localized: "强力"))
+                Text("强力")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -303,7 +304,7 @@ struct FileConversionView: View {
                     .frame(width: 36)
 
                 if let remaining = viewModel.estimatedRemainingSeconds, remaining >= 5 {
-                    Text(String(format: String(localized: "剩余 %@"), formatRemainingTime(remaining)))
+                    Text(String(format: LocaleLocalizer.string(for: "剩余 %@", locale: languageSettings.selectedLanguage.locale), formatRemainingTime(remaining)))
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
@@ -317,7 +318,7 @@ struct FileConversionView: View {
                     Button {
                         Task { await viewModel.exportAll() }
                     } label: {
-                        Label(String(localized: "全部导出"), systemImage: "square.and.arrow.up")
+                        Label("全部导出", systemImage: "square.and.arrow.up")
                     }
                     .buttonStyle(.bordered)
                     .disabled(viewModel.isProcessing)
@@ -330,7 +331,7 @@ struct FileConversionView: View {
                     if viewModel.isProcessing {
                         Image(systemName: "hourglass")
                     } else {
-                        Label(String(localized: "开始降噪"), systemImage: "wand.and.stars")
+                        Label("开始降噪", systemImage: "wand.and.stars")
                     }
                 }
                 .buttonStyle(.borderedProminent)
@@ -343,13 +344,14 @@ struct FileConversionView: View {
 
     /// 将秒数格式化为本地化的「X分Y秒」或「Y秒」
     private func formatRemainingTime(_ seconds: Double) -> String {
+        let locale = languageSettings.selectedLanguage.locale
         let total = Int(ceil(seconds))
         if total >= 60 {
             let m = Int64(total / 60)
             let s = Int64(total % 60)
-            return s > 0 ? String(format: String(localized: "%lld分%lld秒"), m, s) : String(format: String(localized: "%lld分"), m)
+            return s > 0 ? String(format: LocaleLocalizer.string(for: "%lld分%lld秒", locale: locale), m, s) : String(format: LocaleLocalizer.string(for: "%lld分", locale: locale), m)
         } else {
-            return String(format: String(localized: "%lld秒"), Int64(total))
+            return String(format: LocaleLocalizer.string(for: "%lld秒", locale: locale), Int64(total))
         }
     }
 
@@ -367,11 +369,11 @@ struct FileConversionView: View {
                     .controlSize(.large)
                     .tint(.white)
 
-                Text(String(localized: "正在从相册导入..."))
+                Text("正在从相册导入...")
                     .font(.headline)
                     .foregroundStyle(.white)
 
-                Text(String(localized: "大文件可能需要较长时间"))
+                Text("大文件可能需要较长时间")
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.7))
             }
@@ -426,6 +428,7 @@ private func topViewController(from vc: UIViewController) -> UIViewController {
 
 #Preview {
     FileConversionView()
+        .environmentObject(LanguageSettings())
     #if os(macOS)
         .frame(width: 700, height: 560)
     #endif

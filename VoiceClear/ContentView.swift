@@ -16,22 +16,20 @@ enum FeatureItem: String, CaseIterable, Identifiable, Hashable {
 
     var id: String { rawValue }
 
-    /// 本地化后的功能名称（用于导航栏标题等）
-    var localizedTitle: String {
-        String(localized: String.LocalizationValue(stringLiteral: rawValue))
-    }
-
-    /// 本地化后的功能描述
-    var localizedSubtitle: String {
-        String(localized: String.LocalizationValue(stringLiteral: subtitleRaw))
-    }
-
-    /// 功能描述原始值（供本地化使用）
-    private var subtitleRaw: String {
+    /// 功能描述本地化键（供 Text(LocalizedStringKey) 使用）
+    var subtitleKey: String {
         switch self {
         case .denoisePlayer:  return "实时降噪 · 边播边听"
         case .fileConversion: return "批量降噪 · 导出文件"
         }
+    }
+
+    var localizedTitle: String {
+        String(localized: String.LocalizationValue(stringLiteral: rawValue))
+    }
+
+    var localizedSubtitle: String {
+        String(localized: String.LocalizationValue(stringLiteral: subtitleKey))
     }
 
     /// 功能图标
@@ -72,15 +70,15 @@ struct ContentView: View {
                         switch item {
                         case .denoisePlayer:
                             DenoisePlayerView()
-                                .navigationTitle(item.localizedTitle)
+                                .navigationTitle(LocalizedStringKey(item.rawValue))
                                 #if os(macOS)
-                                .navigationSubtitle(item.subtitle)
+                                .navigationSubtitle(LocalizedStringKey(item.subtitleKey))
                                 #endif
                         case .fileConversion:
                             FileConversionView()
-                                .navigationTitle(item.localizedTitle)
+                                .navigationTitle(LocalizedStringKey(item.rawValue))
                                 #if os(macOS)
-                                .navigationSubtitle(item.subtitle)
+                                .navigationSubtitle(LocalizedStringKey(item.subtitleKey))
                                 #endif
                         }
                     }
@@ -110,6 +108,7 @@ struct ContentView: View {
                         .zIndex(3)
                 }
             }
+            .environment(\.locale, languageSettings.selectedLanguage.locale)
             #if os(macOS)
             .onExitCommand {
                 guard isSettingsPresented else { return }
@@ -117,10 +116,10 @@ struct ContentView: View {
             }
             #endif
             .onChange(of: languageSettings.selectedLanguage) { _, newLanguage in
-                languageToastText = String(
-                    format: String(localized: "语言已切换为 %@"),
-                    newLanguage.localizedName
-                )
+                let locale = newLanguage.locale
+                let format = LocaleLocalizer.string(for: "语言已切换为 %@", locale: locale)
+                let name = LocaleLocalizer.string(for: newLanguage.nameKey, locale: locale)
+                languageToastText = String(format: format, name)
                 withAnimation(.easeOut(duration: 0.2)) {
                     showLanguageToast = true
                 }
@@ -176,11 +175,11 @@ struct ContentView: View {
                 )
                 .symbolEffect(.pulse, options: .repeating.speed(0.5))
 
-            Text(String(localized: "Voice Clear"))
+            Text("Voice Clear")
                 .font(.largeTitle)
                 .fontWeight(.bold)
 
-            Text(String(localized: "AI 音频降噪工具"))
+            Text("AI 音频降噪工具")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
@@ -207,7 +206,7 @@ struct ContentView: View {
                 }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(String(localized: "设置"))
+        .accessibilityLabel(Text("设置"))
     }
 
     private var settingsMask: some View {
@@ -300,11 +299,11 @@ struct ContentView: View {
 
                 // 文字区域
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(item.localizedTitle)
+                    Text(LocalizedStringKey(item.rawValue))
                         .font(.headline)
                         .foregroundStyle(.primary)
 
-                    Text(item.subtitle)
+                    Text(LocalizedStringKey(item.subtitleKey))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -333,7 +332,7 @@ struct ContentView: View {
     // MARK: - 底部信息
 
     private var footerInfo: some View {
-        Text(String(localized: "版本 1.0 · 基于 RNNoise 引擎"))
+        Text("版本 1.0 · 基于 RNNoise 引擎")
             .font(.caption)
             .foregroundStyle(.quaternary)
     }

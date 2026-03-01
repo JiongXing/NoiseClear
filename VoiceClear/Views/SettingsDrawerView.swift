@@ -29,7 +29,7 @@ struct SettingsDrawerView: View {
 
     private var languageSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label(String(localized: "语言"), systemImage: "globe")
+            Label("语言", systemImage: "globe")
                 .font(.headline)
                 .foregroundStyle(.primary)
 
@@ -55,10 +55,10 @@ struct SettingsDrawerView: View {
         }, label: {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(language.localizedName)
+                    Text(LocalizedStringKey(language.nameKey))
                         .font(.body.weight(.medium))
                         .foregroundStyle(.primary)
-                    Text(language.localizedSubtitle)
+                    Text(LocalizedStringKey(language.subtitleKey))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -81,7 +81,7 @@ struct SettingsDrawerView: View {
             )
         })
         .buttonStyle(.plain)
-        .accessibilityLabel(language.localizedName)
-        .accessibilityValue(isSelected ? String(localized: "已选择") : String(localized: "未选择"))
+        .accessibilityLabel(Text(LocalizedStringKey(language.nameKey)))
+        .accessibilityValue(Text(LocalizedStringKey(isSelected ? "已选择" : "未选择")))
     }
 }
