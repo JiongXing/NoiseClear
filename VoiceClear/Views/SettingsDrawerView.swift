@@ -54,7 +54,7 @@ struct SettingsDrawerView: View {
             }
         }, label: {
             HStack(spacing: 12) {
-                Text(L10n.string(language.nameKey, locale: languageSettings.currentLocale))
+                Text(L10n.string(language.nameKey, locale: language.locale))
                     .font(.body.weight(.medium))
                     .foregroundStyle(.primary)
 
@@ -76,7 +76,7 @@ struct SettingsDrawerView: View {
             )
         })
         .buttonStyle(.plain)
-        .accessibilityLabel(Text(L10n.string(language.nameKey, locale: languageSettings.currentLocale)))
+        .accessibilityLabel(Text(L10n.string(language.nameKey, locale: language.locale)))
         .accessibilityValue(Text(isSelected ? L10n.text(.commonSelected) : L10n.text(.commonNotSelected)))
     }
 }
