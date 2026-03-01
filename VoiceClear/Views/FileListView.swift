@@ -90,7 +90,7 @@ struct AudioFileRow: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
-                    Text(file.status.displayText(locale: languageSettings.currentLocale))
+                    Text(statusText)
                         .font(.caption)
                         .foregroundStyle(statusColor)
                 }
@@ -108,7 +108,7 @@ struct AudioFileRow: View {
 
             // 操作按钮 — 增大间距与点击区域，防止误触
             HStack(spacing: 8) {
-                if file.status.isCompleted {
+                if file.importStatus.isReady && file.status.isCompleted {
                     Button(action: onExport) {
                         Image(systemName: "square.and.arrow.up")
                             .font(.system(size: 15, weight: .medium))
@@ -158,7 +158,7 @@ struct AudioFileRow: View {
         }
         // 上下文菜单：右键(macOS) / 长按(iOS) 提供操作入口
         .contextMenu {
-            if file.status.isCompleted {
+            if file.importStatus.isReady && file.status.isCompleted {
                 Button {
                     onExport()
                 } label: {
@@ -201,34 +201,64 @@ struct AudioFileRow: View {
 
     @ViewBuilder
     private var statusIcon: some View {
-        switch file.status {
-        case .idle:
-            Image(systemName: file.isVideo ? "film" : "music.note")
-                .foregroundStyle(.secondary)
-                .font(.system(size: 14))
-
-        case .processing:
+        switch file.importStatus {
+        case .loading:
             ProgressView()
                 .controlSize(.small)
 
-        case .completed:
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.green)
-                .font(.system(size: 16))
-
         case .failed:
             Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(.red)
+                .foregroundStyle(.orange)
                 .font(.system(size: 14))
+
+        case .ready:
+            switch file.status {
+            case .idle:
+                Image(systemName: file.isVideo ? "film" : "music.note")
+                    .foregroundStyle(.secondary)
+                    .font(.system(size: 14))
+
+            case .processing:
+                ProgressView()
+                    .controlSize(.small)
+
+            case .completed:
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                    .font(.system(size: 16))
+
+            case .failed:
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.red)
+                    .font(.system(size: 14))
+            }
+        }
+    }
+
+    private var statusText: String {
+        switch file.importStatus {
+        case .loading:
+            return L10n.string(.fileListImporting, locale: languageSettings.currentLocale)
+        case .failed(let message):
+            return L10n.string(.processingFailed, locale: languageSettings.currentLocale, message)
+        case .ready:
+            return file.status.displayText(locale: languageSettings.currentLocale)
         }
     }
 
     private var statusColor: Color {
-        switch file.status {
-        case .idle: return .secondary
-        case .processing: return .accentColor
-        case .completed: return .green
-        case .failed: return .red
+        switch file.importStatus {
+        case .loading:
+            return .accentColor
+        case .failed:
+            return .orange
+        case .ready:
+            switch file.status {
+            case .idle: return .secondary
+            case .processing: return .accentColor
+            case .completed: return .green
+            case .failed: return .red
+            }
         }
     }
 }

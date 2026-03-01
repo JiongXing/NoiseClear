@@ -76,6 +76,11 @@ struct FileConversionView: View {
             }
         }
         .background(Color.platformBackground)
+        .overlay {
+            if viewModel.isImportingFiles {
+                importingFilesOverlay
+            }
+        }
         .toolbar {
             if !viewModel.audioFiles.isEmpty {
                 ToolbarItem(placement: .automatic) {
@@ -324,20 +329,65 @@ struct FileConversionView: View {
                     .disabled(viewModel.isProcessing)
                 }
 
-                // 开始降噪（处理中时只显示图标，避免文案换行挤压空间）
-                Button {
-                    Task { await viewModel.processAll() }
-                } label: {
-                    if viewModel.isProcessing {
-                        Image(systemName: "hourglass")
-                    } else {
+                if viewModel.isProcessing {
+                    Button(role: .destructive) {
+                        viewModel.stopProcessing()
+                    } label: {
+                        Label(L10n.string(.conversionActionStopDenoise, locale: languageSettings.currentLocale), systemImage: "stop.circle")
+                    }
+                    .buttonStyle(.borderedProminent)
+                } else {
+                    Button {
+                        Task { await viewModel.processAll() }
+                    } label: {
                         Label(L10n.string(.conversionActionStartDenoise, locale: languageSettings.currentLocale), systemImage: "wand.and.stars")
                     }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(viewModel.isImportingFiles || !viewModel.hasFilesToProcess)
                 }
-                .buttonStyle(.borderedProminent)
-                .disabled(viewModel.isProcessing || !viewModel.hasFilesToProcess)
             }
         }
+    }
+
+    // MARK: - 导入文件遮罩
+
+    private var importingFilesOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.18)
+                .ignoresSafeArea()
+
+            VStack(spacing: 10) {
+                ProgressView()
+                    .controlSize(.regular)
+
+                Text(L10n.text(.conversionImportingLocalFiles))
+                    .font(.headline)
+
+                if let fileName = viewModel.importingFileName, !fileName.isEmpty {
+                    Text(fileName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .frame(maxWidth: 260)
+                }
+
+                Button(role: .cancel) {
+                    viewModel.cancelImport()
+                } label: {
+                    Text(L10n.text(.commonCancel))
+                        .font(.caption)
+                }
+                .buttonStyle(.bordered)
+                .padding(.top, 4)
+            }
+            .padding(20)
+            .background {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(.ultraThinMaterial)
+            }
+        }
+        .allowsHitTesting(true)
     }
 
     // MARK: - 工具方法

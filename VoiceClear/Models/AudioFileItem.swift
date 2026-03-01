@@ -90,6 +90,25 @@ let kVideoExtensions = ["mp4", "mov"]
 /// 所有支持的文件扩展名
 let kAllSupportedExtensions = kAudioExtensions + kVideoExtensions
 
+// MARK: - 导入状态
+
+/// 文件导入预处理状态（读取时长/波形）
+enum ImportStatus: Equatable {
+    case loading
+    case ready
+    case failed(String)
+
+    var isReady: Bool {
+        if case .ready = self { return true }
+        return false
+    }
+
+    var isLoading: Bool {
+        if case .loading = self { return true }
+        return false
+    }
+}
+
 // MARK: - 音频/视频文件数据模型
 
 /// 表示一个待处理的媒体文件（音频或视频）
@@ -97,21 +116,24 @@ struct AudioFileItem: Identifiable {
     let id: UUID
     let url: URL
     let fileName: String
-    let duration: TimeInterval
+    var duration: TimeInterval
     /// 原始音频波形采样点（用于可视化，已降采样）
     var waveformSamples: [Float]
     /// 处理后的波形采样点
     var processedWaveformSamples: [Float]
+    /// 导入状态
+    var importStatus: ImportStatus
     /// 处理状态
     var status: ProcessingStatus
 
-    init(url: URL, duration: TimeInterval, waveformSamples: [Float] = []) {
+    init(url: URL, duration: TimeInterval = 0, waveformSamples: [Float] = [], importStatus: ImportStatus = .ready) {
         self.id = UUID()
         self.url = url
         self.fileName = url.lastPathComponent
         self.duration = duration
         self.waveformSamples = waveformSamples
         self.processedWaveformSamples = []
+        self.importStatus = importStatus
         self.status = .idle
     }
 

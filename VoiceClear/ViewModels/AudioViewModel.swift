@@ -40,6 +40,19 @@ final class AudioViewModel {
     /// 预估剩余时间（秒），进度不足时不展示
     var estimatedRemainingSeconds: Double?
 
+    /// 是否正在导入并预处理文件（读取时长/波形）
+    var isImportingFiles: Bool = false
+
+    /// 文件导入预处理进度 (0.0 ~ 1.0)
+    var importProgress: Double = 0
+
+    /// 当前导入中的文件名（用于 UI 提示）
+    var importingFileName: String?
+
+    private var importTask: Task<Void, Never>?
+    private var shouldStopProcessing: Bool = false
+    private var activeDenoiser: FFmpegDenoiser?
+
     // MARK: - iOS 文件选择与导出状态
 
     #if os(iOS)
@@ -64,6 +77,7 @@ final class AudioViewModel {
     /// 是否有文件可以处理
     var hasFilesToProcess: Bool {
         audioFiles.contains { file in
+            guard file.importStatus.isReady else { return false }
             if case .idle = file.status { return true }
             if case .failed = file.status { return true }
             return false
@@ -102,35 +116,82 @@ final class AudioViewModel {
 
     /// 通过 URL 列表添加文件（支持拖拽）
     func addFiles(from urls: [URL]) async {
-        for url in urls {
-            // 避免重复添加
-            guard !audioFiles.contains(where: { $0.url == url }) else { continue }
+        guard !urls.isEmpty else { return }
 
-            // 检查文件扩展名（支持音频和视频）
+        let candidates = urls.filter { url in
             let ext = url.pathExtension.lowercased()
-            guard kAllSupportedExtensions.contains(ext) else { continue }
+            guard kAllSupportedExtensions.contains(ext) else { return false }
+            return !audioFiles.contains(where: { $0.url == url })
+        }
+        guard !candidates.isEmpty else { return }
 
-            // iOS fileImporter 返回的 URL 是安全作用域资源，必须先获取访问权限
-            let securityScoped = url.startAccessingSecurityScopedResource()
-            defer { if securityScoped { url.stopAccessingSecurityScopedResource() } }
+        importTask?.cancel()
 
-            do {
-                let duration = try await AudioFileService.getMediaDuration(url: url)
+        // 阶段一：立即入列，占位展示，提升交互响应速度。
+        for url in candidates {
+            let placeholder = AudioFileItem(
+                url: url,
+                duration: 0,
+                waveformSamples: [],
+                importStatus: .loading
+            )
+            audioFiles.append(placeholder)
+        }
 
-                // 预加载波形数据
-                let audioData = try AudioFileService.loadAndResample(url: url)
-                let waveform = AudioFileService.extractWaveformSamples(from: audioData)
+        isImportingFiles = true
+        importProgress = 0
+        importingFileName = nil
 
-                let item = AudioFileItem(
-                    url: url,
-                    duration: duration,
-                    waveformSamples: waveform
-                )
-                audioFiles.append(item)
-            } catch {
-                showErrorMessage(L10n.string(.conversionErrorCannotReadFileDetail, url.lastPathComponent, error.localizedDescription))
+        importTask = Task { @MainActor in
+            let totalCount = Double(candidates.count)
+            var handledCount: Double = 0
+
+            defer {
+                self.isImportingFiles = false
+                self.importProgress = 0
+                self.importingFileName = nil
+                self.importTask = nil
+            }
+
+            for url in candidates {
+                if Task.isCancelled { break }
+
+                self.importingFileName = url.lastPathComponent
+
+                // iOS fileImporter 返回的 URL 是安全作用域资源，必须先获取访问权限
+                let securityScoped = url.startAccessingSecurityScopedResource()
+                defer { if securityScoped { url.stopAccessingSecurityScopedResource() } }
+
+                do {
+                    let loaded = try await self.loadDurationAndWaveform(url: url)
+                    if let index = self.audioFiles.firstIndex(where: { $0.url == url }) {
+                        self.audioFiles[index].duration = loaded.duration
+                        self.audioFiles[index].waveformSamples = loaded.waveform
+                        self.audioFiles[index].importStatus = .ready
+                    }
+                } catch {
+                    if let index = self.audioFiles.firstIndex(where: { $0.url == url }) {
+                        self.audioFiles[index].importStatus = .failed(error.localizedDescription)
+                    }
+                    self.showErrorMessage(L10n.string(.conversionErrorCannotReadFileDetail, url.lastPathComponent, error.localizedDescription))
+                }
+
+                handledCount += 1
+                self.importProgress = min(1.0, handledCount / totalCount)
             }
         }
+    }
+
+    /// 取消当前导入任务
+    func cancelImport() {
+        importTask?.cancel()
+        importTask = nil
+        isImportingFiles = false
+        importProgress = 0
+        importingFileName = nil
+
+        // 保留成功导入的文件，移除仍在加载中的占位项。
+        audioFiles.removeAll { $0.importStatus.isLoading }
     }
 
     /// 移除指定文件
@@ -143,6 +204,7 @@ final class AudioViewModel {
 
     /// 移除所有文件
     func removeAll() {
+        cancelImport()
         audioFiles.removeAll()
         selectedFileID = nil
     }
@@ -152,10 +214,18 @@ final class AudioViewModel {
     /// 处理所有待处理的文件
     func processAll() async {
         guard !isProcessing else { return }
+        shouldStopProcessing = false
         isProcessing = true
-        defer { isProcessing = false }
+        defer {
+            isProcessing = false
+            shouldStopProcessing = false
+            activeDenoiser = nil
+        }
 
         for i in audioFiles.indices {
+            if shouldStopProcessing { break }
+            guard audioFiles[i].importStatus.isReady else { continue }
+
             let canRetry: Bool
             switch audioFiles[i].status {
             case .idle: canRetry = true
@@ -171,12 +241,24 @@ final class AudioViewModel {
     /// 处理单个文件
     func processSingleFile(_ item: AudioFileItem) async {
         guard let index = audioFiles.firstIndex(where: { $0.id == item.id }) else { return }
+        guard audioFiles[index].importStatus.isReady else { return }
         guard !isProcessing else { return }
 
+        shouldStopProcessing = false
         isProcessing = true
-        defer { isProcessing = false }
+        defer {
+            isProcessing = false
+            shouldStopProcessing = false
+            activeDenoiser = nil
+        }
 
         await processFile(at: index)
+    }
+
+    /// 停止当前降噪处理
+    func stopProcessing() {
+        shouldStopProcessing = true
+        activeDenoiser?.cancel()
     }
 
     /// 导出单个已完成的文件
@@ -240,6 +322,7 @@ final class AudioViewModel {
     /// 视频文件：复制视频流 + 降噪音频轨道，输出原格式（MP4/MOV）
     private func processFile(at index: Int) async {
         guard index < audioFiles.count else { return }
+        guard audioFiles[index].importStatus.isReady else { return }
 
         audioFiles[index].status = .processing(0)
         processingStartTime = Date()
@@ -251,6 +334,11 @@ final class AudioViewModel {
         let isVideo = audioFiles[index].isVideo
         let strength = Float(denoiseStrength)
         let fileIndex = index
+
+        if shouldStopProcessing {
+            audioFiles[index].status = .idle
+            return
+        }
 
         // iOS fileImporter 返回的 URL 是安全作用域资源，处理期间需保持访问权限
         let securityScoped = inputURL.startAccessingSecurityScopedResource()
@@ -264,12 +352,12 @@ final class AudioViewModel {
             )
 
             // 所有重操作通过 GCD 在全局队列执行，确保不在主线程
+            let denoiser = FFmpegDenoiser(strength: strength)
+            activeDenoiser = denoiser
+
             let result: (waveform: [Float], tempURL: URL) = try await withCheckedThrowingContinuation { continuation in
                 DispatchQueue.global(qos: .userInitiated).async {
                     do {
-                        // 初始化降噪引擎
-                        let denoiser = FFmpegDenoiser(strength: strength)
-
                         // 执行 RNNoise 降噪（根据文件类型选择不同处理策略）
                         try denoiser.process(
                             inputURL: inputURL,
@@ -300,12 +388,25 @@ final class AudioViewModel {
             audioFiles[index].status = .completed(result.tempURL)
             processingStartTime = nil
             estimatedRemainingSeconds = nil
+            activeDenoiser = nil
 
         } catch {
+            activeDenoiser = nil
             guard index < audioFiles.count else { return }
-            audioFiles[index].status = .failed(error.localizedDescription)
             processingStartTime = nil
             estimatedRemainingSeconds = nil
+
+            if let denoiserError = error as? FFmpegDenoiserError,
+               case .cancelled = denoiserError {
+                audioFiles[index].status = .idle
+                return
+            }
+            if shouldStopProcessing {
+                audioFiles[index].status = .idle
+                return
+            }
+
+            audioFiles[index].status = .failed(error.localizedDescription)
             showErrorMessage(L10n.string(.conversionErrorProcessingFailed, audioFiles[index].fileName, error.localizedDescription))
         }
     }
@@ -326,6 +427,23 @@ final class AudioViewModel {
         } else {
             estimatedRemainingSeconds = clamped
         }
+    }
+
+    /// 导入阶段读取时长与波形（在后台线程执行，避免阻塞主线程）
+    private func loadDurationAndWaveform(url: URL) async throws -> (duration: TimeInterval, waveform: [Float]) {
+        let duration = try await AudioFileService.getMediaDuration(url: url)
+        let waveform: [Float] = try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    let audioData = try AudioFileService.loadAndResample(url: url)
+                    let samples = AudioFileService.extractWaveformSamples(from: audioData)
+                    continuation.resume(returning: samples)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+        return (duration, waveform)
     }
 
     /// 显示错误消息

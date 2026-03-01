@@ -30,6 +30,7 @@ final class FFmpegDenoiser: Sendable {
 
     /// 降噪强度 (0.0 ~ 1.0)
     private let denoiseStrength: Float
+    private let cancellationToken = ProcessingCancellationToken()
 
     // MARK: - 初始化
 
@@ -37,6 +38,16 @@ final class FFmpegDenoiser: Sendable {
     /// - Parameter strength: 降噪强度 (0.0 ~ 1.0)，默认 1.0（全强度）
     init(strength: Float = 1.0) {
         self.denoiseStrength = max(0.0, min(1.0, strength))
+    }
+
+    func cancel() {
+        cancellationToken.cancel()
+    }
+
+    private func throwIfCancelled() throws {
+        if cancellationToken.isCancelled {
+            throw FFmpegDenoiserError.cancelled
+        }
     }
 
     // MARK: - 主处理方法
@@ -59,6 +70,8 @@ final class FFmpegDenoiser: Sendable {
         isVideo: Bool = false,
         onProgress: @escaping @Sendable (Double) -> Void
     ) throws {
+        try throwIfCancelled()
+
         if isVideo {
             try denoiseVideo(
                 inputURL: inputURL,
@@ -74,6 +87,8 @@ final class FFmpegDenoiser: Sendable {
                 onProgress: onProgress
             )
         }
+
+        try throwIfCancelled()
 
         guard FileManager.default.fileExists(atPath: outputURL.path) else {
             throw FFmpegDenoiserError.outputFileMissing
@@ -100,6 +115,7 @@ final class FFmpegDenoiser: Sendable {
             throw FFmpegDenoiserError.processingFailed(L10n.string(.serviceErrorInputBufferCreationFailed))
         }
         try sourceFile.read(into: sourceBuffer)
+        try throwIfCancelled()
         onProgress(0.02)
 
         // 2. 转换为 48kHz 单声道（RNNoise 要求）
@@ -132,6 +148,7 @@ final class FFmpegDenoiser: Sendable {
             return sourceBuffer
         }
         if let convError { throw FFmpegDenoiserError.processingFailed(convError.localizedDescription) }
+        try throwIfCancelled()
         onProgress(0.05)
 
         // 3. RNNoise 逐帧降噪
@@ -183,6 +200,7 @@ final class FFmpegDenoiser: Sendable {
             return denoisedBuffer
         }
         if let outConvError { throw FFmpegDenoiserError.processingFailed(outConvError.localizedDescription) }
+        try throwIfCancelled()
 
         let outputFile = try AVAudioFile(forWriting: outputURL, settings: outputFormat.settings)
         try outputFile.write(from: finalBuffer)
@@ -241,6 +259,7 @@ final class FFmpegDenoiser: Sendable {
 
         var allSamples = [Float]()
         while audioReader.status == .reading {
+            try throwIfCancelled()
             guard let sampleBuffer = audioReaderOutput.copyNextSampleBuffer() else { break }
             let numSamples = CMSampleBufferGetNumSamples(sampleBuffer)
             guard numSamples > 0 else { continue }
@@ -328,6 +347,13 @@ final class FFmpegDenoiser: Sendable {
         let videoQueue = DispatchQueue(label: "com.voiceclear.denoise.video", qos: .userInitiated)
         videoInput.requestMediaDataWhenReady(on: videoQueue) { [videoReader, videoReaderOutput] in
             while videoInput.isReadyForMoreMediaData {
+                if self.cancellationToken.isCancelled {
+                    errorHolder.error = FFmpegDenoiserError.cancelled
+                    videoInput.markAsFinished()
+                    group.leave()
+                    return
+                }
+
                 if videoReader.status == .reading,
                    let sample = videoReaderOutput.copyNextSampleBuffer() {
                     videoInput.append(sample)
@@ -348,6 +374,13 @@ final class FFmpegDenoiser: Sendable {
 
         audioInput.requestMediaDataWhenReady(on: audioQueue) {
             while audioInput.isReadyForMoreMediaData {
+                if self.cancellationToken.isCancelled {
+                    errorHolder.error = FFmpegDenoiserError.cancelled
+                    audioInput.markAsFinished()
+                    group.leave()
+                    return
+                }
+
                 guard audioWriteOffset < totalAudioSamples else {
                     audioInput.markAsFinished()
                     group.leave()
@@ -381,6 +414,8 @@ final class FFmpegDenoiser: Sendable {
         }
 
         group.wait()
+
+        try throwIfCancelled()
 
         if let writerError = errorHolder.error {
             writer.cancelWriting()
@@ -438,6 +473,8 @@ final class FFmpegDenoiser: Sendable {
         var lastReportedProgress: Double = -1
 
         while offset < count {
+            try throwIfCancelled()
+
             let remaining = count - offset
             let currentSize = min(frameSize, remaining)
 
@@ -561,11 +598,29 @@ private final class ErrorHolder: @unchecked Sendable {
     var error: Error?
 }
 
+private final class ProcessingCancellationToken: @unchecked Sendable {
+    private let lock = NSLock()
+    private var cancelled = false
+
+    var isCancelled: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return cancelled
+    }
+
+    func cancel() {
+        lock.lock()
+        cancelled = true
+        lock.unlock()
+    }
+}
+
 // MARK: - 错误类型
 
 enum FFmpegDenoiserError: LocalizedError {
     case outputFileMissing
     case processingFailed(String)
+    case cancelled
     case noVideoTrack
     case noAudioTrack
     case writerFailed(String)
@@ -576,6 +631,8 @@ enum FFmpegDenoiserError: LocalizedError {
             return L10n.string(.serviceErrorOutputFileMissing)
         case .processingFailed(let msg):
             return L10n.string(.serviceErrorAudioProcessingFailed, msg)
+        case .cancelled:
+            return L10n.string(.serviceErrorProcessingCancelled)
         case .noVideoTrack:
             return L10n.string(.serviceErrorVideoTrackMissing)
         case .noAudioTrack:
