@@ -94,6 +94,12 @@ VoiceClear 是一款使用 SwiftUI + AVFoundation 构建的原生应用。项目
   - 视频 -> 保持原容器（`mp4/mov`），视频轨直通，音轨降噪后编码
 - 在线 URL：校验 `http/https`，并结合扩展名与 MIME 推断媒体类型
 
+## 发布前构建号递增
+
+- 上传 App Store 前，先递增 `CFBundleVersion`（对应 Xcode 的 Build Number）
+- 自动 +1：`./scripts/bump_build_number.sh`
+- 指定目标构建号：`./scripts/bump_build_number.sh 3`
+
 ## 项目结构（核心）
 
 ```text

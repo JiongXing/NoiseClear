@@ -28,23 +28,6 @@ enum AVAssetAsyncLoaderError: LocalizedError {
 enum AVAssetAsyncLoader {
     private static let timeout: TimeInterval = 30
 
-    private final class ResultHolder<T>: @unchecked Sendable {
-        private let lock = NSLock()
-        nonisolated(unsafe) private var value: Result<T, Error>?
-
-        nonisolated func set(_ result: Result<T, Error>) {
-            lock.lock()
-            value = result
-            lock.unlock()
-        }
-
-        nonisolated func get() -> Result<T, Error>? {
-            lock.lock()
-            defer { lock.unlock() }
-            return value
-        }
-    }
-
     static func firstTrack(of asset: AVAsset, mediaType: AVMediaType) throws -> AVAssetTrack {
         let tracks = try blockingLoad("tracks(\(mediaType.rawValue))") {
             try await asset.loadTracks(withMediaType: mediaType)
@@ -74,14 +57,24 @@ enum AVAssetAsyncLoader {
         operation: @escaping @Sendable () async throws -> T
     ) throws -> T {
         let semaphore = DispatchSemaphore(value: 0)
-        let holder = ResultHolder<T>()
+        let lock = NSLock()
+        let resultPointer = UnsafeMutablePointer<Result<T, Error>?>.allocate(capacity: 1)
+        resultPointer.initialize(to: nil)
+        defer {
+            resultPointer.deinitialize(count: 1)
+            resultPointer.deallocate()
+        }
 
         Task.detached(priority: .userInitiated) {
             do {
                 let value = try await operation()
-                holder.set(.success(value))
+                lock.lock()
+                resultPointer.pointee = .success(value)
+                lock.unlock()
             } catch {
-                holder.set(.failure(error))
+                lock.lock()
+                resultPointer.pointee = .failure(error)
+                lock.unlock()
             }
             semaphore.signal()
         }
@@ -94,7 +87,11 @@ enum AVAssetAsyncLoader {
             throw AVAssetAsyncLoaderError.timeout(target)
         }
 
-        switch holder.get() {
+        lock.lock()
+        let result = resultPointer.pointee
+        lock.unlock()
+
+        switch result {
         case .success(let value):
             return value
         case .failure(let error):
