@@ -319,23 +319,23 @@ struct FileConversionView: View {
 
             HStack(spacing: 12) {
                 // 导出全部
-                if viewModel.hasCompletedFiles {
+                if viewModel.hasCompletedFiles && !viewModel.isProcessing {
                     Button {
                         Task { await viewModel.exportAll() }
                     } label: {
                         Label(L10n.string(.conversionActionExportAll, locale: languageSettings.currentLocale), systemImage: "square.and.arrow.up")
                     }
                     .buttonStyle(.bordered)
-                    .disabled(viewModel.isProcessing)
                 }
 
                 if viewModel.isProcessing {
                     Button(role: .destructive) {
                         viewModel.stopProcessing()
                     } label: {
-                        Label(L10n.string(.conversionActionStopDenoise, locale: languageSettings.currentLocale), systemImage: "stop.circle")
+                        Image(systemName: "stop.circle")
                     }
                     .buttonStyle(.borderedProminent)
+                    .accessibilityLabel(L10n.text(.conversionActionStopDenoise))
                 } else {
                     Button {
                         Task { await viewModel.processAll() }
