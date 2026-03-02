@@ -16,6 +16,9 @@ struct VoiceClearApp: App {
             ContentView()
                 .environmentObject(languageSettings)
                 .environment(\.locale, languageSettings.currentLocale)
+                #if os(iOS)
+                .tint(.secondary)
+                #endif
         }
         #if os(macOS)
         .defaultSize(width: 1024, height: 768)
