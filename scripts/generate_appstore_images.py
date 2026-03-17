@@ -116,7 +116,7 @@ def render_card(conf: dict[str, object]) -> None:
     draw.ellipse((-200, 500, 520, 980), fill=(146, 110, 255, 52))
 
     draw.rounded_rectangle((72, 72, 298, 132), radius=22, fill=(255, 255, 255, 34), outline=(255, 255, 255, 110), width=1)
-    draw.text((96, 88), "VoiceClear", font=label_font, fill=(255, 255, 255, 250))
+    draw.text((96, 88), "NoiseClear", font=label_font, fill=(255, 255, 255, 250))
 
     draw.text((72, 182), conf["headline"], font=title_font, fill=(255, 255, 255, 255))
     draw.text((72, 278), conf["subline"], font=body_font, fill=(228, 236, 255, 244))

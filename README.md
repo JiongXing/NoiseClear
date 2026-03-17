@@ -1,8 +1,8 @@
-# VoiceClear
+# NoiseClear
 
 > 基于 RNNoise 的 Apple 平台音视频人声降噪工具，支持本地与在线流式播放降噪。
 
-VoiceClear 是一款使用 SwiftUI + AVFoundation 构建的原生应用。项目核心是 RNNoise 实时降噪，围绕低延迟播放、在线可用性与稳定回退进行了工程化封装。
+NoiseClear 是一款使用 SwiftUI + AVFoundation 构建的原生应用。项目核心是 RNNoise 实时降噪，围绕低延迟播放、在线可用性与稳定回退进行了工程化封装。
 
 详细技术文档见：[TECHNICAL_SOLUTION.md](TECHNICAL_SOLUTION.md)
 
@@ -73,15 +73,15 @@ VoiceClear 是一款使用 SwiftUI + AVFoundation 构建的原生应用。项目
 
 ### 新增语言
 
-1. 在 `VoiceClear/Localization/LocalizationConfig.swift` 的 `supportedLanguageCodes` 增加语言代码（如 `ja`）
-2. 在 `VoiceClear/Localizable.xcstrings` 为全部 key 增加该语言翻译
-3. 如有系统权限文案，补充 `VoiceClear/InfoPlist.xcstrings`
+1. 在 `NoiseClear/Localization/LocalizationConfig.swift` 的 `supportedLanguageCodes` 增加语言代码（如 `ja`）
+2. 在 `NoiseClear/Localizable.xcstrings` 为全部 key 增加该语言翻译
+3. 如有系统权限文案，补充 `NoiseClear/InfoPlist.xcstrings`
 4. 运行 `./scripts/l10n_audit.sh`
 
 ### 新增文案
 
-1. 在 `VoiceClear/Localization/L10nKey.swift` 新增稳定 key（按模块命名）
-2. 在 `VoiceClear/Localizable.xcstrings` 增加对应翻译（`en/zh-Hans/zh-Hant`）
+1. 在 `NoiseClear/Localization/L10nKey.swift` 新增稳定 key（按模块命名）
+2. 在 `NoiseClear/Localizable.xcstrings` 增加对应翻译（`en/zh-Hans/zh-Hant`）
 3. 代码中使用 `L10n.text(.newKey)` 或 `L10n.string(.newKey, ...)`，不要直接写硬编码文案
 4. 运行 `./scripts/l10n_audit.sh` 检查硬编码与翻译缺失
 
@@ -103,8 +103,8 @@ VoiceClear 是一款使用 SwiftUI + AVFoundation 构建的原生应用。项目
 ## 项目结构（核心）
 
 ```text
-VoiceClear/
-├── VoiceClearApp.swift
+NoiseClear/
+├── NoiseClearApp.swift
 ├── ContentView.swift
 ├── Localizable.xcstrings
 ├── Localization/
@@ -151,9 +151,9 @@ VoiceClear/
 
 ## 运行与调试
 
-1. 打开 `VoiceClear.xcodeproj`
+1. 打开 `NoiseClear.xcodeproj`
 2. 选择目标平台（iOS 或 macOS）
-3. 直接运行 `VoiceClear` target
+3. 直接运行 `NoiseClear` target
 
 ## 许可证
 

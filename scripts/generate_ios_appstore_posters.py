@@ -6,8 +6,8 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
 
 ROOT = Path(__file__).resolve().parents[1]
-INPUT_DIR = ROOT / "docs" / "screenshots" / "ios"
-OUTPUT_DIR = ROOT / "docs" / "appstore_assets" / "ios"
+INPUT_DIR = ROOT / "appstore" / "screenshots" / "ios"
+OUTPUT_DIR = ROOT / "appstore" / "appstore_assets" / "ios"
 
 W, H = 1242, 2688
 
@@ -169,7 +169,7 @@ def render(locale: str, scene: dict[str, object]) -> None:
     footer_font = load_font(locale, 34, weight="bold")
 
     draw.rounded_rectangle((78, 74, 394, 164), radius=30, fill=(255, 255, 255, 210), outline=(255, 255, 255, 255), width=1)
-    draw.text((112, 100), "VoiceClear", font=tag_font, fill=(34, 63, 98, 245))
+    draw.text((112, 100), "NoiseClear", font=tag_font, fill=(34, 63, 98, 245))
 
     title_lines = wrap_text(draw, str(scene["title"]), title_font, max_width=1088)
     y = 230

@@ -1,8 +1,8 @@
-# VoiceClear 技术方案说明
+# NoiseClear 技术方案说明
 
 ## 方案定位
 
-VoiceClear 当前播放能力采用双链路实时降噪架构：
+NoiseClear 当前播放能力采用双链路实时降噪架构：
 
 - **本地链路**：`IncrementalStreamingDenoiser` + `AudioEnginePlayer`
 - **在线链路**：`AVPlayerItem` + `MTAudioProcessingTap` + `AVPlayerDenoiseTapProcessor`

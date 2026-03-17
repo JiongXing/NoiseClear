@@ -1,4 +1,4 @@
-# VoiceClear 版本新增内容（4 语言）
+# NoiseClear 版本新增内容（4 语言）
 
 > 用途：可用于 App Store Connect 的「What’s New」或版本更新说明。
 

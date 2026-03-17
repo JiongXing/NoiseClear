@@ -7,7 +7,7 @@ cd "$ROOT_DIR"
 warn_count=0
 
 echo "[l10n-audit] Checking hardcoded UI text..."
-HARDCODED=$(rg -n 'Text\("[^"\\]*[A-Za-z\u4e00-\u9fa5][^"\\]*"|Label\("[^"\\]*[A-Za-z\u4e00-\u9fa5][^"\\]*"|Button\("[^"\\]*[A-Za-z\u4e00-\u9fa5][^"\\]*"|TextField\("[^"\\]*[A-Za-z\u4e00-\u9fa5][^"\\]*"|\.help\("[^"\\]*[A-Za-z\u4e00-\u9fa5][^"\\]*"|accessibilityLabel\(Text\("[^"\\]*[A-Za-z\u4e00-\u9fa5][^"\\]*"' VoiceClear -g '*.swift' || true)
+HARDCODED=$(rg -n 'Text\("[^"\\]*[A-Za-z\u4e00-\u9fa5][^"\\]*"|Label\("[^"\\]*[A-Za-z\u4e00-\u9fa5][^"\\]*"|Button\("[^"\\]*[A-Za-z\u4e00-\u9fa5][^"\\]*"|TextField\("[^"\\]*[A-Za-z\u4e00-\u9fa5][^"\\]*"|\.help\("[^"\\]*[A-Za-z\u4e00-\u9fa5][^"\\]*"|accessibilityLabel\(Text\("[^"\\]*[A-Za-z\u4e00-\u9fa5][^"\\]*"' NoiseClear -g '*.swift' || true)
 if [[ -n "$HARDCODED" ]]; then
   warn_count=$((warn_count + 1))
   echo "[WARN] Hardcoded UI text detected:"
@@ -26,7 +26,7 @@ MISSING=$(jq -r '
       missing: (["en", "zh-Hans", "zh-Hant"] | map(select(($entry.value.localizations[.] // null) == null)))
     })
   | map(select(.missing | length > 0))
-' VoiceClear/Localizable.xcstrings)
+' NoiseClear/Localizable.xcstrings)
 if [[ "$MISSING" != "[]" ]]; then
   warn_count=$((warn_count + 1))
   echo "[WARN] Missing localization entries:"
@@ -44,7 +44,7 @@ TYPO_HITS=$(jq -r '
   | to_entries[]
   | select((.value.stringUnit.value // "") | test("Englist|teh|langauge"; "i"))
   | "\($entry.key) [\(.key)] => \(.value.stringUnit.value)"
-' VoiceClear/Localizable.xcstrings)
+' NoiseClear/Localizable.xcstrings)
 if [[ -n "$TYPO_HITS" ]]; then
   warn_count=$((warn_count + 1))
   echo "[WARN] Suspicious localization values found:"

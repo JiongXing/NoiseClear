@@ -6,8 +6,8 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
 
 ROOT = Path(__file__).resolve().parents[1]
-INPUT_DIR = ROOT / "docs" / "snapshots_mac"
-OUTPUT_DIR = ROOT / "docs" / "appstore_assets" / "mac"
+INPUT_DIR = ROOT / "appstore" / "screenshots" / "mac"
+OUTPUT_DIR = ROOT / "appstore" / "appstore_assets" / "mac"
 
 W, H = 1280, 800
 
@@ -180,7 +180,7 @@ def make_scene(locale: str, scene: dict[str, object], copy: dict[str, object]) -
     tag_font = load_font(locale, 24, weight="bold")
     locale_font = load_font(locale, 21)
 
-    draw.text((80, 84), "VoiceClear for macOS", font=tag_font, fill=(42, 57, 78, 228))
+    draw.text((80, 84), "NoiseClear for macOS", font=tag_font, fill=(42, 57, 78, 228))
     draw.text((80, 118), copy["locale_label"], font=locale_font, fill=(76, 92, 116, 218))
 
     title_lines = wrap_text(draw, copy["title"], title_font, max_width=388)

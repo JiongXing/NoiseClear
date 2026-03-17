@@ -1,4 +1,4 @@
-# VoiceClear App Store 上架文案（4 语言）
+# NoiseClear App Store 上架文案（4 语言）
 
 > 适用于 App Store Connect：推广文本（Promotional Text）、描述（Description）、关键词（Keywords）。
 
@@ -15,13 +15,13 @@ https://jiongxing.github.io/voiceclear
 一键为音频和视频人声降噪，支持在线链接实时播放与本地文件处理，让对话更清晰、听感更舒适。
 
 ### 描述
-VoiceClear 是一款面向日常用户的人声降噪工具。
+NoiseClear 是一款面向日常用户的人声降噪工具。
 
 无论是课程录音、会议音频、采访素材，还是手机拍摄的视频，只需导入文件或粘贴在线链接，即可快速降低背景噪声，让人声更清楚。
 
 你可以先听原声，再切换降噪效果，对比后再决定是否导出。降噪强度支持灵活调节，轻度优化到强力降噪都能按需选择。
 
-【你可以用 VoiceClear 做什么】
+【你可以用 NoiseClear 做什么】
 - 听清嘈杂环境下的讲话内容
 - 优化网课、播客、会议录音的可懂度
 - 提升 Vlog、访谈、记录视频的人声表现
@@ -45,13 +45,13 @@ VoiceClear 是一款面向日常用户的人声降噪工具。
 一鍵為音訊與影片人聲降噪，支援線上連結即時播放與本機檔案處理，讓對話更清楚、聽感更舒適。
 
 ### 描述
-VoiceClear 是一款為一般使用者設計的人聲降噪工具。
+NoiseClear 是一款為一般使用者設計的人聲降噪工具。
 
 不論是課程錄音、會議音訊、訪談素材，或是手機拍攝的影片，只要匯入檔案或貼上線上連結，就能快速降低背景噪音，讓人聲更清晰。
 
 你可以先聽原聲，再切換降噪效果，對比後再決定是否匯出。降噪強度可彈性調整，從輕度優化到強力降噪都能依需求設定。
 
-【你可以用 VoiceClear 做什麼】
+【你可以用 NoiseClear 做什麼】
 - 聽清楚吵雜環境中的對話內容
 - 提升網課、Podcast、會議錄音的可懂度
 - 改善 Vlog、訪談、紀錄影片的人聲表現
@@ -75,13 +75,13 @@ VoiceClear 是一款為一般使用者設計的人聲降噪工具。
 Clean up voices in audio and video with one tap. Process local files or stream from URLs with adjustable denoise strength for clearer speech.
 
 ### Description
-VoiceClear is a voice-focused noise reduction app made for everyday users.
+NoiseClear is a voice-focused noise reduction app made for everyday users.
 
-From class recordings and meeting audio to interview clips and phone videos, VoiceClear helps reduce background noise so speech is easier to understand.
+From class recordings and meeting audio to interview clips and phone videos, NoiseClear helps reduce background noise so speech is easier to understand.
 
 Import a file or paste a media URL, preview original and denoised playback, then export when you're happy with the result. You can fine-tune denoise strength based on your content, from light cleanup to stronger reduction.
 
-What you can do with VoiceClear:
+What you can do with NoiseClear:
 - Improve speech clarity in noisy recordings
 - Make meetings, podcasts, and lessons easier to follow
 - Enhance spoken voice in vlogs and interview videos
@@ -105,13 +105,13 @@ voice denoise,audio denoise,video denoise,noise reduction,speech clarity,backgro
 音声・動画の話し声をワンタップでノイズ低減。ローカルファイルにもURL再生にも対応し、聞き取りやすい音声へ整えます。
 
 ### 説明
-VoiceClear は、一般ユーザー向けに作られた人声音声のノイズ低減アプリです。
+NoiseClear は、一般ユーザー向けに作られた人声音声のノイズ低減アプリです。
 
 授業の録音、会議音声、インタビュー素材、スマホで撮影した動画など、さまざまな音声の背景ノイズを抑えて、話し声を聞き取りやすくします。
 
 ファイルを読み込むかURLを貼り付けるだけで、元の音とノイズ低減後の音を聞き比べできます。仕上がりに合わせてノイズ低減の強さも調整できます。
 
-VoiceClear でできること：
+NoiseClear でできること：
 - 騒がしい環境で録音した会話を聞き取りやすくする
 - 会議・ポッドキャスト・学習音声の明瞭さを向上
 - Vlog やインタビュー動画の話し声を改善

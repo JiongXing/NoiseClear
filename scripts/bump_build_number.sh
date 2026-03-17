@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PBXPROJ="$ROOT_DIR/VoiceClear.xcodeproj/project.pbxproj"
+PBXPROJ="$ROOT_DIR/NoiseClear.xcodeproj/project.pbxproj"
 
 if [[ ! -f "$PBXPROJ" ]]; then
   echo "[ERROR] project.pbxproj not found: $PBXPROJ"
