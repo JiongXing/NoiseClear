@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 INPUT_DIR = ROOT / "appstore" / "screenshots" / "mac"
 OUTPUT_DIR = ROOT / "appstore" / "appstore_assets" / "mac"
 
-W, H = 1280, 800
+W, H = 1440, 900
 
 
 def load_font(locale: str, size: int, weight: str = "regular") -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
@@ -111,7 +111,7 @@ def build_background(top: tuple[int, int, int], bottom: tuple[int, int, int], ac
         draw.line((0, y, W, y), fill=(*lerp_color(top, bottom, t), 255))
 
     add_glow(bg, (-220, -190), (560, 560), accent, 88)
-    add_glow(bg, (900, -220), (560, 560), (154, 197, 255), 72)
+    add_glow(bg, (1120, -220), (560, 560), (154, 197, 255), 72)
     return bg
 
 
@@ -121,22 +121,34 @@ def place_screenshot(canvas: Image.Image, source: Path, box: tuple[int, int, int
     shot = ImageEnhance.Brightness(shot).enhance(1.02)
     shot = ImageEnhance.Contrast(shot).enhance(1.06)
     shot = ImageEnhance.Color(shot).enhance(1.04)
-    shot = ImageOps.fit(shot, (w, h), method=Image.Resampling.LANCZOS).convert("RGBA")
 
-    radius = 24
-    mask = rounded_mask((w, h), radius)
-    rounded = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    # Keep source aspect ratio and only scale down for composition.
+    inner_pad = 16
+    max_w = max(1, w - inner_pad * 2)
+    max_h = max(1, h - inner_pad * 2)
+    src_w, src_h = shot.size
+    scale = min(max_w / src_w, max_h / src_h, 1.0)
+    dst_w = max(1, int(src_w * scale))
+    dst_h = max(1, int(src_h * scale))
+    shot = shot.resize((dst_w, dst_h), Image.Resampling.LANCZOS).convert("RGBA")
+
+    radius = min(24, max(10, int(min(dst_w, dst_h) * 0.04)))
+    mask = rounded_mask((dst_w, dst_h), radius)
+    rounded = Image.new("RGBA", (dst_w, dst_h), (0, 0, 0, 0))
     rounded.paste(shot, (0, 0), mask=mask)
+
+    px = x + (w - dst_w) // 2
+    py = y + (h - dst_h) // 2
 
     shadow = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
     s_draw = ImageDraw.Draw(shadow)
-    s_draw.rounded_rectangle((x + 2, y + 10, x + w + 10, y + h + 14), radius=28, fill=(30, 35, 45, 52))
+    s_draw.rounded_rectangle((px + 2, py + 10, px + dst_w + 10, py + dst_h + 14), radius=28, fill=(30, 35, 45, 52))
     canvas.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(14)))
 
     frame = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
     f_draw = ImageDraw.Draw(frame)
-    f_draw.rounded_rectangle((x - 1, y - 1, x + w + 1, y + h + 1), radius=24, outline=(255, 255, 255, 255), width=2)
-    canvas.alpha_composite(rounded, (x, y))
+    f_draw.rounded_rectangle((px - 1, py - 1, px + dst_w + 1, py + dst_h + 1), radius=radius, outline=(255, 255, 255, 255), width=2)
+    canvas.alpha_composite(rounded, (px, py))
     canvas.alpha_composite(frame)
 
 
@@ -146,6 +158,7 @@ def draw_pills(
     items: list[str],
     start_x: int,
     start_y: int,
+    max_right: int,
     tint: tuple[int, int, int],
 ) -> None:
     draw = ImageDraw.Draw(canvas)
@@ -157,7 +170,7 @@ def draw_pills(
         bbox = draw.textbbox((0, 0), label, font=pill_font)
         pw = bbox[2] + 26
         ph = 46
-        if x + pw > 486:
+        if x + pw > max_right:
             x = start_x
             y += ph + 12
         draw.rounded_rectangle((x, y, x + pw, y + ph), radius=20, fill=(*tint, 48), outline=(*tint, 130), width=1)
@@ -171,41 +184,41 @@ def make_scene(locale: str, scene: dict[str, object], copy: dict[str, object]) -
 
     panel = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
     p_draw = ImageDraw.Draw(panel)
-    p_draw.rounded_rectangle((48, 48, 502, 752), radius=28, fill=(255, 255, 255, 188), outline=(255, 255, 255, 210), width=1)
+    p_draw.rounded_rectangle((56, 46, 562, 852), radius=30, fill=(255, 255, 255, 188), outline=(255, 255, 255, 210), width=1)
     canvas.alpha_composite(panel)
 
-    title_font = load_font(locale, 54, weight="bold")
-    subtitle_font = load_font(locale, 34, weight="bold")
-    body_font = load_font(locale, 27)
-    tag_font = load_font(locale, 24, weight="bold")
-    locale_font = load_font(locale, 21)
+    title_font = load_font(locale, 58, weight="bold")
+    subtitle_font = load_font(locale, 35, weight="bold")
+    body_font = load_font(locale, 28)
+    tag_font = load_font(locale, 26, weight="bold")
+    locale_font = load_font(locale, 22)
 
-    draw.text((80, 84), "NoiseClear for macOS", font=tag_font, fill=(42, 57, 78, 228))
-    draw.text((80, 118), copy["locale_label"], font=locale_font, fill=(76, 92, 116, 218))
+    draw.text((88, 84), "NoiseClear for macOS", font=tag_font, fill=(42, 57, 78, 228))
+    draw.text((88, 122), copy["locale_label"], font=locale_font, fill=(76, 92, 116, 218))
 
-    title_lines = wrap_text(draw, copy["title"], title_font, max_width=388)
-    y = 172
+    title_lines = wrap_text(draw, copy["title"], title_font, max_width=440)
+    y = 184
     for line in title_lines[:2]:
-        draw.text((80, y), line, font=title_font, fill=(18, 31, 52, 255))
-        y += 62
+        draw.text((88, y), line, font=title_font, fill=(18, 31, 52, 255))
+        y += 68
 
-    subtitle_lines = wrap_text(draw, copy["subtitle"], subtitle_font, max_width=388)
+    subtitle_lines = wrap_text(draw, copy["subtitle"], subtitle_font, max_width=440)
     for line in subtitle_lines[:2]:
-        draw.text((80, y + 8), line, font=subtitle_font, fill=(44, 65, 94, 245))
-        y += 46
+        draw.text((88, y + 10), line, font=subtitle_font, fill=(44, 65, 94, 245))
+        y += 48
 
-    body_lines = wrap_text(draw, copy["desc"], body_font, max_width=388)
-    text_y = max(360, y + 26)
+    body_lines = wrap_text(draw, copy["desc"], body_font, max_width=440)
+    text_y = max(420, y + 24)
     for line in body_lines[:4]:
-        draw.text((80, text_y), line, font=body_font, fill=(62, 76, 98, 240))
-        text_y += 38
+        draw.text((88, text_y), line, font=body_font, fill=(62, 76, 98, 240))
+        text_y += 42
 
-    draw_pills(canvas, locale, copy["pills"], 80, 560, tint=scene["accent"])
-    place_screenshot(canvas, INPUT_DIR / scene["screenshot"], (530, 90, 710, 620))
+    draw_pills(canvas, locale, copy["pills"], 88, 700, max_right=530, tint=scene["accent"])
+    place_screenshot(canvas, INPUT_DIR / scene["screenshot"], (612, 88, 764, 712))
 
     output_dir = OUTPUT_DIR / locale
     output_dir.mkdir(parents=True, exist_ok=True)
-    name = f"mac_appstore_{scene['id']}_{locale}_1280x800.png"
+    name = f"mac_appstore_{scene['id']}_{locale}_1440x900.png"
     canvas.convert("RGB").save(output_dir / name, quality=96)
 
 

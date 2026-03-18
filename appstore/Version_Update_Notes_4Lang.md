@@ -5,46 +5,46 @@
 ## 1) 简体中文（zh-Hans）
 
 ### 版本更新说明
-- 新增流式实时降噪：支持边播放边降噪，反馈更及时，语音更清晰。
-- 优化交互体验：改进导入与处理流程，状态展示更清楚，操作更顺畅。
-- 性能提升：优化音频处理链路与缓冲策略，整体更稳定，卡顿更少。
+- App 名称升级为 **Noise Clear**。
+- 新名称更贴合产品核心能力，能更直观地表达音频降噪与语音清晰化功能。
+- 本次更新主要为品牌命名优化，不影响现有功能与使用方式。
 
 ### 精简版（可直接粘贴）
-本次更新新增流式实时降噪，支持边播放边降噪；同时优化导入与处理交互，操作更顺畅；并进一步提升性能与稳定性，减少卡顿，带来更清晰的语音体验。
+本次更新将 App 名称升级为 **Noise Clear**，名称更贴合产品功能表意，帮助你更直观地理解我们的核心能力。现有功能与使用体验保持一致。
 
 ---
 
 ## 2) 繁體中文（zh-Hant）
 
 ### 版本更新說明
-- 新增串流即時降噪：支援邊播放邊降噪，回饋更即時，語音更清晰。
-- 優化互動體驗：改善匯入與處理流程，狀態顯示更清楚，操作更流暢。
-- 效能提升：優化音訊處理鏈路與緩衝策略，整體更穩定、減少卡頓。
+- App 名稱升級為 **Noise Clear**。
+- 新名稱更貼合產品核心能力，更直觀表達音訊降噪與語音清晰化功能。
+- 本次更新主要為品牌命名優化，不影響既有功能與使用方式。
 
 ### 精簡版（可直接貼上）
-本次更新新增串流即時降噪，支援邊播放邊降噪；同時優化匯入與處理互動，操作更流暢；並進一步提升效能與穩定性，減少卡頓，帶來更清晰的語音體驗。
+本次更新將 App 名稱升級為 **Noise Clear**，名稱更貼合產品功能表意，讓你更直觀理解我們的核心能力。現有功能與使用體驗維持一致。
 
 ---
 
 ## 3) English (en)
 
 ### Release Notes
-- Added real-time streaming denoise for live playback cleanup and faster feedback.
-- Improved interaction flow with clearer import/processing states and smoother operations.
-- Enhanced performance by optimizing the audio pipeline and buffering strategy for better stability.
+- The app name has been updated to **Noise Clear**.
+- The new name better reflects the product's core purpose: reducing noise and making speech clearer.
+- This release is focused on brand naming optimization, with no change to existing features or workflows.
 
 ### Short Version (Ready to Paste)
-This update adds real-time streaming denoise during playback, improves import and processing interactions for a smoother experience, and boosts overall performance and stability to reduce stutter and deliver clearer speech.
+This update renames the app to **Noise Clear** to better match what the product does. Existing features and your current workflow remain the same.
 
 ---
 
 ## 4) 日本語（ja）
 
 ### アップデート内容
-- ストリーミングのリアルタイムノイズ低減を追加し、再生しながら効果を確認できます。
-- 操作体験を改善し、読み込み・処理状態がより分かりやすく、操作もスムーズになりました。
-- 音声処理パイプラインとバッファ戦略を最適化し、性能と安定性を向上しました。
+- アプリ名を **Noise Clear** に変更しました。
+- 新しい名称は、ノイズ低減と音声の明瞭化という製品の中核機能を、より分かりやすく表現しています。
+- 今回の更新は主にブランド名称の最適化であり、既存機能や使い方に変更はありません。
 
 ### 短縮版（そのまま利用可）
-今回のアップデートでは、再生中に使えるストリーミングのリアルタイムノイズ低減を追加。あわせて操作体験を改善し、処理の分かりやすさと操作性を向上。さらに性能と安定性を高め、音声をよりクリアにしました。
+今回のアップデートでは、アプリ名を **Noise Clear** に変更しました。製品機能をより直感的に伝える名称へ最適化しています。既存機能や操作方法に変更はありません。
 
