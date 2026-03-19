@@ -1,0 +1,4 @@
+interface:
+  display_name: "NoiseClear Feature Locator"
+  short_description: "按功能描述快速定位 NoiseClear 页面与核心模块"
+  default_prompt: "Use $noiseclear-feature-locator to map a feature description to the matching NoiseClear page, ViewModel, and service files."

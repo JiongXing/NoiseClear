@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-`NoiseClear/` contains the app target. Keep UI in `Views/`, state and orchestration in `ViewModels/`, domain data in `Models/`, and playback/denoise logic in `Services/`. Localization helpers live in `NoiseClear/Localization/`, with user-facing strings in `NoiseClear/Localizable.xcstrings` and `NoiseClear/InfoPlist.xcstrings`. Bundled RNNoise C sources are vendored under `NoiseClear/Libraries/RNNoise/`. Repo-level docs live in `README.md` and `TECHNICAL_SOLUTION.md`; release art and screenshots are under `appstore/`; maintenance scripts are in `scripts/`.
+`NoiseClear/` contains the app target. Keep UI in `Views/`, state and orchestration in `ViewModels/`, domain data in `Models/`, and playback/denoise logic in `Services/`. Localization helpers live in `NoiseClear/Localization/`, with user-facing strings in `NoiseClear/Localizable.xcstrings` and `NoiseClear/InfoPlist.xcstrings`. Bundled RNNoise C sources are vendored under `NoiseClear/Libraries/RNNoise/`. Repo-level docs live in `README.md`; release art and screenshots are under `appstore/`; maintenance scripts are in `scripts/`.
 
 ## Build, Test, and Development Commands
 Open the project in Xcode with `open NoiseClear.xcodeproj` and run the `NoiseClear` scheme for iOS or macOS.
